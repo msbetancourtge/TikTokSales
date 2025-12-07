@@ -98,8 +98,13 @@ class IncomingComment(BaseModel):
 
 class ChatResponse(BaseModel):
     """Chat response with NLP intent, product recommendations, and purchase info."""
-    intencion_compra: str
+    user_id: str
+    message: str
+    intent: str  # "yes" or "no" - buying intent from webhook
     cantidad: int
+    timestamp: str
+    recommended_products: list = []
+    response_text: str
 
 
 class CommentQueueResponse(BaseModel):
@@ -136,8 +141,9 @@ async def process_chat(payload: ChatMessage):
     try:
         # Call n8n webhook to classify intent
         user_message = payload.message
-        intent = "none"
-        intent_score = 0.0
+        intent = "no"  # Default: no buying intent
+        cantidad = 0
+        timestamp = datetime.utcnow().isoformat()
         
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -148,21 +154,21 @@ async def process_chat(payload: ChatMessage):
                 )
                 if webhook_response.status_code == 200:
                     result = webhook_response.json()
-                    # Expect response like: {"intencion_compra": "yes"} or {"intencion_compra": "no"}
-                    buy_intent = result.get("intencion_compra", "").lower()
-                    intent = "buy" if buy_intent == "yes" else "none"
-                    intent_score = 0.95 if intent == "buy" else 0.0
-                    logger.info(f"Intent classification from n8n: {intent} (score={intent_score})")
+                    # Expect response: {"text": {"intencion_compra": "yes/no", "cantidad": int}}
+                    text_block = result.get("text", {})
+                    intent = text_block.get("intencion_compra", "no").lower()
+                    cantidad = int(text_block.get("cantidad", 0))
+                    logger.info(f"Intent classification from n8n: intent={intent}, cantidad={cantidad}")
                 else:
                     logger.warning(f"n8n webhook returned status {webhook_response.status_code}")
         except Exception as e:
             logger.error(f"Failed to call n8n webhook for intent classification: {e}")
-            intent = "none"
-            intent_score = 0.0
+            intent = "no"
+            cantidad = 0
         
-        # Mock product recommendations
+        # Product recommendations if buying intent detected
         recommended_products = []
-        if intent == "buy":
+        if intent == "yes":
             recommended_products = [
                 {
                     "id": "prod_001",
@@ -172,7 +178,7 @@ async def process_chat(payload: ChatMessage):
                 }
             ]
         
-        response_text = "¿Te gustaría ver más opciones?" if intent == "buy" else "¿En qué puedo ayudarte?"
+        response_text = "¿Te gustaría ver más opciones?" if intent == "yes" else "¿En qué puedo ayudarte?"
         
         # Store chat message in Supabase if available
         if db_initialized:
@@ -182,7 +188,8 @@ async def process_chat(payload: ChatMessage):
                     "user_id": payload.user_id,
                     "message": payload.message,
                     "intent": intent,
-                    "intent_score": intent_score
+                    "cantidad": cantidad,
+                    "timestamp": timestamp
                 }).execute()
             except Exception as e:
                 logger.warning(f"Failed to store chat message in Supabase: {e}")
@@ -192,7 +199,8 @@ async def process_chat(payload: ChatMessage):
             user_id=payload.user_id,
             message=payload.message,
             intent=intent,
-            intent_score=intent_score,
+            cantidad=cantidad,
+            timestamp=timestamp,
             recommended_products=recommended_products,
             response_text=response_text
         )

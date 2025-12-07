@@ -5,7 +5,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException, Depends, Header
 from pydantic import BaseModel, EmailStr
-from passlib.hash import bcrypt
+import bcrypt
 import jwt
 
 from db import get_supabase_client
@@ -76,8 +76,9 @@ def register_client(payload: ClientRegister):
     if resp.data and len(resp.data) > 0:
         raise HTTPException(status_code=400, detail="Client already exists")
 
+    # Hash password using bcrypt directly (truncate to 72 bytes for bcrypt limit)
     pw_bytes = payload.password.encode('utf-8')[:72]
-    pw_hash = bcrypt.hash(pw_bytes.decode('utf-8', 'ignore'))
+    pw_hash = bcrypt.hashpw(pw_bytes, bcrypt.gensalt()).decode('utf-8')
     record = {
         "email": payload.email,
         "name": payload.name,
@@ -119,7 +120,10 @@ def login(payload: LoginRequest):
     if not resp.data or len(resp.data) == 0:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     client = resp.data[0]
-    if not bcrypt.verify(payload.password, client.get("password_hash")):
+    # Verify password using bcrypt directly
+    pw_bytes = payload.password.encode('utf-8')[:72]
+    stored_hash = client.get("password_hash", "").encode('utf-8')
+    if not bcrypt.checkpw(pw_bytes, stored_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_token({"client_id": client.get("id"), "email": client.get("email")})
     return {"token": token, "client": {"id": client.get("id"), "email": client.get("email"), "name": client.get("name")}}
