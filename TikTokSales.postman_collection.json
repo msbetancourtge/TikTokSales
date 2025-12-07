@@ -575,10 +575,10 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}:{{ecommerce_port}}/products/cool_streamer?limit=50&offset=0",
+              "raw": "{{base_url}}:{{ecommerce_port}}/products/view/cool_streamer?limit=50&offset=0",
               "host": ["{{base_url}}"],
               "port": "{{ecommerce_port}}",
-              "path": ["products", "cool_streamer"],
+              "path": ["products", "view", "cool_streamer"],
               "query": [
                 {
                   "key": "limit",
