@@ -158,23 +158,42 @@ class AnalyzePayload(BaseModel):
 
 @app.post("/analyze_product")
 def analyze_product(payload: AnalyzePayload):
-    """Simple placeholder analyzer that returns a description and category.
+    """Analyze product images and return tag and model_description.
 
-    In production this should run the CV model to produce a description and category.
+    In production this should run the CNN model to:
+    1. Classify the product and generate a tag
+    2. Generate a detailed model_description for product matching
     """
     try:
-        # Placeholder heuristics: description mentions number of frames, category guesses by keywords
-        desc = f"Auto description for '{payload.product_name}' using {len(payload.frame_urls)} frames."
+        # Placeholder heuristics: In production, run CNN on images
         name_lower = payload.product_name.lower()
-        if any(k in name_lower for k in ("shoe", "sneaker", "boot")):
-            category = "footwear"
-        elif any(k in name_lower for k in ("shirt", "tee", "jacket", "hoodie")):
-            category = "apparel"
-        elif any(k in name_lower for k in ("phone", "case", "charger")):
-            category = "electronics"
+        
+        # Generate tag based on product analysis
+        if any(k in name_lower for k in ("shoe", "sneaker", "boot", "sandal")):
+            tag = "footwear"
+        elif any(k in name_lower for k in ("shirt", "tee", "jacket", "hoodie", "dress", "pants", "jeans")):
+            tag = "apparel"
+        elif any(k in name_lower for k in ("phone", "case", "charger", "cable", "headphone")):
+            tag = "electronics"
+        elif any(k in name_lower for k in ("cream", "lotion", "makeup", "lipstick", "perfume")):
+            tag = "beauty"
+        elif any(k in name_lower for k in ("bag", "purse", "wallet", "backpack")):
+            tag = "accessories"
         else:
-            category = "general"
-
-        return {"description": desc, "category": category}
+            tag = "general"
+        
+        # Generate model_description (CNN-generated description for matching)
+        model_description = f"Product '{payload.product_name}' analyzed from {len(payload.frame_urls)} image(s). Category: {tag}. Visual features extracted for product matching."
+        
+        logger.info(f"Analyzed product: tag={tag}, description_length={len(model_description)}")
+        
+        return {
+            "tag": tag,
+            "model_description": model_description,
+            # Keep backwards compatibility
+            "description": model_description,
+            "category": tag
+        }
     except Exception as e:
+        logger.error(f"Error analyzing product: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -138,6 +138,7 @@ class ProductDetailsResponse(BaseModel):
     streamer: str
     name: str
     user_description: Optional[str]
+    tag: Optional[str]
     model_description: Optional[str]
     price: float
     stock: int
@@ -207,6 +208,7 @@ async def upload_product(
             "sku": product_data["sku"],
             "name": product_data["name"],
             "user_description": product_data["user_description"],
+            "tag": product_data.get("tag"),
             "model_description": product_data.get("model_description"),
             "category": product_data.get("category"),
             "price": product_data["price"],

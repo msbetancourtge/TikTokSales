@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS products (
     sku TEXT,
     name TEXT NOT NULL,
     description TEXT,
+    tag TEXT,
+    model_description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     image_url TEXT,
     stock INTEGER DEFAULT 0,

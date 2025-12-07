@@ -135,7 +135,7 @@ async def get_model_description_from_vision(
     product_name: str
 ) -> dict:
     """
-    Call Vision service to generate product description from images.
+    Call Vision service to analyze product images.
     
     Args:
         image_urls: List of image URLs
@@ -143,7 +143,7 @@ async def get_model_description_from_vision(
         product_name: Product name for context
     
     Returns:
-        Model-generated product description
+        Dict with tag and model_description from CNN analysis
     """
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -157,18 +157,19 @@ async def get_model_description_from_vision(
 
             if response.status_code != 200:
                 logger.warning(f"Vision service returned {response.status_code}")
-                return {"description": "", "category": None}
+                return {"tag": None, "model_description": "", "category": None}
 
             data = response.json()
-            description = data.get("description", "")
-            category = data.get("category")
+            tag = data.get("tag")
+            model_description = data.get("model_description", "")
+            category = data.get("category")  # backwards compatibility
 
-            logger.info(f"Got model description from Vision: {len(description)} chars; category={category}")
-            return {"description": description, "category": category}
+            logger.info(f"Got analysis from Vision: tag={tag}, description_length={len(model_description)}")
+            return {"tag": tag, "model_description": model_description, "category": category}
 
     except Exception as e:
-        logger.warning(f"Failed to get model description from Vision: {e}")
-        return {"description": "", "category": None}
+        logger.warning(f"Failed to get analysis from Vision: {e}")
+        return {"tag": None, "model_description": "", "category": None}
 
 
 async def process_product_upload(
@@ -220,10 +221,11 @@ async def process_product_upload(
         
         logger.info(f"Uploaded {len(image_urls)} images for {streamer}/{sku}")
         
-        # Get model description and category from Vision service
+        # Get tag and model_description from Vision service CNN
         url_list = [img["url"] for img in image_urls]
         vision_result = await get_model_description_from_vision(url_list, streamer, name)
-        model_description = vision_result.get("description") if isinstance(vision_result, dict) else ""
+        tag = vision_result.get("tag") if isinstance(vision_result, dict) else None
+        model_description = vision_result.get("model_description", "") if isinstance(vision_result, dict) else ""
         category = vision_result.get("category") if isinstance(vision_result, dict) else None
         
         # Prepare product data for database
@@ -232,6 +234,7 @@ async def process_product_upload(
             "sku": sku,
             "name": name,
             "user_description": user_description,
+            "tag": tag,
             "model_description": model_description,
             "category": category,
             "price": price,
