@@ -570,15 +570,15 @@
           }
         },
         {
-          "name": "List All Products",
+          "name": "List Products by Streamer",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}:{{ecommerce_port}}/products?limit=50&offset=0",
+              "raw": "{{base_url}}:{{ecommerce_port}}/products/cool_streamer?limit=50&offset=0",
               "host": ["{{base_url}}"],
               "port": "{{ecommerce_port}}",
-              "path": ["products"],
+              "path": ["products", "cool_streamer"],
               "query": [
                 {
                   "key": "limit",
@@ -589,7 +589,8 @@
                   "value": "0"
                 }
               ]
-            }
+            },
+            "description": "List all products for a specific streamer. Replace 'cool_streamer' with the actual streamer username."
           }
         }
       ]

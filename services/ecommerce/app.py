@@ -417,32 +417,59 @@ async def send_whatsapp(payload: SMSRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/products")
-async def list_products():
+@app.get("/products/{streamer}")
+async def list_all_products(streamer: str, limit: int = 50, offset: int = 0):
     """
-    List available products (mock).
+    List all available products from Supabase for a specific streamer.
+    
+    Args:
+        streamer: Streamer username
+        limit: Maximum number of products (default 50)
+        offset: Offset for pagination (default 0)
     
     Returns:
-        List of products
+        List of products from database
     """
-    return {
-        "products": [
-            {
-                "id": "prod_001",
-                "name": "Product 1",
-                "price": 29.99,
-                "currency": "USD",
-                "description": "Sample product 1"
-            },
-            {
-                "id": "prod_002",
-                "name": "Product 2",
-                "price": 49.99,
-                "currency": "USD",
-                "description": "Sample product 2"
-            }
-        ]
-    }
+    try:
+        if not db_initialized:
+            raise HTTPException(status_code=503, detail="Database not available")
+        
+        supabase = get_supabase_client()
+        query = supabase.table("products") \
+            .select("id,sku,streamer,name,user_description,tag,model_description,price,stock,image_urls,category,created_at") \
+            .eq("streamer", streamer)
+        
+        response = query.range(offset, offset + limit - 1).execute()
+        
+        products = []
+        if response.data:
+            for p in response.data:
+                products.append({
+                    "id": str(p.get("id")),
+                    "sku": p.get("sku"),
+                    "streamer": p.get("streamer"),
+                    "name": p.get("name"),
+                    "price": float(p.get("price", 0)),
+                    "currency": "USD",
+                    "description": p.get("user_description"),
+                    "tag": p.get("tag"),
+                    "model_description": p.get("model_description"),
+                    "stock": p.get("stock", 0),
+                    "image_urls": p.get("image_urls"),
+                    "category": p.get("category"),
+                    "created_at": p.get("created_at")
+                })
+        
+        return {
+            "total": len(products),
+            "products": products
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to list products: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/status")
