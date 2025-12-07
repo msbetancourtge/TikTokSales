@@ -1,0 +1,937 @@
+{
+  "info": {
+    "_postman_id": "tiktoksales-collection-2024",
+    "name": "TikTokSales API",
+    "description": "Complete API collection for TikTokSales platform - Live stream commerce with AI-powered product matching",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://72.61.76.44",
+      "type": "string"
+    },
+    {
+      "key": "auth_port",
+      "value": "8083",
+      "type": "string"
+    },
+    {
+      "key": "chat_port",
+      "value": "8081",
+      "type": "string"
+    },
+    {
+      "key": "ecommerce_port",
+      "value": "8082",
+      "type": "string"
+    },
+    {
+      "key": "vision_port",
+      "value": "8002",
+      "type": "string"
+    },
+    {
+      "key": "nlp_port",
+      "value": "8001",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "streamer_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Auth Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/health",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Chat Product Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/health",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Ecommerce Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/health",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Vision Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{vision_port}}/health",
+              "host": ["{{base_url}}"],
+              "port": "{{vision_port}}",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "NLP Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{nlp_port}}/health",
+              "host": ["{{base_url}}"],
+              "port": "{{nlp_port}}",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Chat Product Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/status",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["status"]
+            }
+          }
+        },
+        {
+          "name": "Ecommerce Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/status",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Client (Buyer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"buyer@example.com\",\n  \"name\": \"John Buyer\",\n  \"password\": \"securepassword123\",\n  \"phone\": \"+1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/clients/register",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["clients", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register Streamer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('streamer_token', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"streamer@example.com\",\n  \"password\": \"securepassword123\",\n  \"username\": \"cool_streamer\",\n  \"platform\": \"tiktok\",\n  \"follower_count\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/streamers/register",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["streamers", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login (Client → /products)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "}",
+                  "pm.test('Redirect is /products for client', function() {",
+                  "    pm.expect(jsonData.redirect).to.eql('/products');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"buyer@example.com\",\n  \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/login",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "Login (Streamer → /dashboard)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('streamer_token', jsonData.token);",
+                  "}",
+                  "pm.test('Redirect is /dashboard for streamer', function() {",
+                  "    pm.expect(jsonData.redirect).to.eql('/dashboard');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"streamer@example.com\",\n  \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/login",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "Create Purchase (Authenticated)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1,\n  \"streamer\": \"cool_streamer\",\n  \"quantity\": 2,\n  \"total_price\": 59.98,\n  \"payment_method\": \"stripe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/purchase",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["purchase"]
+            }
+          }
+        },
+        {
+          "name": "Go Live (Start Frame Capture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{streamer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/streamers/go_live",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["streamers", "go_live"]
+            },
+            "description": "Mark streamer as LIVE. Frame capture will start for this streamer. Requires streamer JWT token."
+          }
+        },
+        {
+          "name": "Go Offline (Stop Frame Capture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{streamer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/streamers/go_offline",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["streamers", "go_offline"]
+            },
+            "description": "Mark streamer as OFFLINE. Frame capture will stop for this streamer. Requires streamer JWT token."
+          }
+        },
+        {
+          "name": "Get Live Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{streamer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/streamers/live_status",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["streamers", "live_status"]
+            },
+            "description": "Get current live status for the authenticated streamer."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat & Comments",
+      "item": [
+        {
+          "name": "Send Chat Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"tiktok_user_123\",\n  \"streamer_id\": \"cool_streamer\",\n  \"message\": \"¡Quiero comprar eso! ¿Cuánto cuesta?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/chat",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["chat"]
+            }
+          }
+        },
+        {
+          "name": "Queue Comment (TikTok Live)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer\": \"cool_streamer\",\n  \"client\": \"tiktok_viewer_456\",\n  \"timestamp\": \"2024-12-07T15:30:00Z\",\n  \"message\": \"Lo quiero! Dame 2\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/comments",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["comments"]
+            }
+          }
+        },
+        {
+          "name": "Queue Comment 2 (Same User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer\": \"cool_streamer\",\n  \"client\": \"tiktok_viewer_456\",\n  \"timestamp\": \"2024-12-07T15:30:05Z\",\n  \"message\": \"Está muy bonito ese producto\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/comments",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["comments"]
+            }
+          }
+        },
+        {
+          "name": "Process User Queue (Intent Detection)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer_id\": \"cool_streamer\",\n  \"user_id\": \"tiktok_viewer_456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/process_queue",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["process_queue"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products (Streamer Dashboard)",
+      "item": [
+        {
+          "name": "Upload Product with Images",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "streamer",
+                  "value": "cool_streamer",
+                  "type": "text"
+                },
+                {
+                  "key": "sku",
+                  "value": "SHIRT-001",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "Cool Vintage T-Shirt",
+                  "type": "text"
+                },
+                {
+                  "key": "user_description",
+                  "value": "Amazing vintage style t-shirt, 100% cotton, perfect for summer",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "29.99",
+                  "type": "text"
+                },
+                {
+                  "key": "stock",
+                  "value": "100",
+                  "type": "text"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "/path/to/product_image.jpg",
+                  "description": "Select product image file(s)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/products/upload",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["products", "upload"]
+            },
+            "description": "Upload a new product with images. Images are stored in MinIO and analyzed by the CNN model to generate tag and model_description."
+          }
+        },
+        {
+          "name": "Get Product by SKU",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/products/cool_streamer/SHIRT-001",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["products", "cool_streamer", "SHIRT-001"]
+            }
+          }
+        },
+        {
+          "name": "List Streamer Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/products/streamer/cool_streamer?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["products", "streamer", "cool_streamer"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List All Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/products?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vision Service (CNN)",
+      "item": [
+        {
+          "name": "Match Product from Frame",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"frame_urls\": [\n    \"minio://tiktoksales-frames/cool_streamer/frame_20241207_153000.jpg\"\n  ],\n  \"streamer_id\": \"cool_streamer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{vision_port}}/match_product",
+              "host": ["{{base_url}}"],
+              "port": "{{vision_port}}",
+              "path": ["match_product"]
+            },
+            "description": "Match a product from live stream frame using CNN. Returns productId, score, and product details."
+          }
+        },
+        {
+          "name": "Analyze Product Images (Get Tag & Description)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer\": \"cool_streamer\",\n  \"product_name\": \"Cool Vintage T-Shirt\",\n  \"frame_urls\": [\n    \"minio://tiktoksales-products/cool_streamer/SHIRT-001/image1.jpg\",\n    \"minio://tiktoksales-products/cool_streamer/SHIRT-001/image2.jpg\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{vision_port}}/analyze_product",
+              "host": ["{{base_url}}"],
+              "port": "{{vision_port}}",
+              "path": ["analyze_product"]
+            },
+            "description": "Analyze product images using CNN. Returns tag (category) and model_description for product matching."
+          }
+        },
+        {
+          "name": "Capture Frame (Test/Demo)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{vision_port}}/capture_frame?streamer=cool_streamer",
+              "host": ["{{base_url}}"],
+              "port": "{{vision_port}}",
+              "path": ["capture_frame"],
+              "query": [
+                {
+                  "key": "streamer",
+                  "value": "cool_streamer"
+                }
+              ]
+            },
+            "description": "Test endpoint that returns a placeholder PNG frame with streamer name and timestamp."
+          }
+        }
+      ]
+    },
+    {
+      "name": "NLP Service",
+      "item": [
+        {
+          "name": "Predict Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"¡Lo quiero! ¿Cuánto cuesta? Dame 3 por favor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{nlp_port}}/predict_intent",
+              "host": ["{{base_url}}"],
+              "port": "{{nlp_port}}",
+              "path": ["predict_intent"]
+            },
+            "description": "Local NLP intent prediction (backup when n8n webhook is unavailable)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments & Notifications",
+      "item": [
+        {
+          "name": "Process Payment (Stripe)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"ORD-abc123\",\n  \"user_id\": \"user-uuid-here\",\n  \"items\": [\n    {\n      \"product_id\": \"SHIRT-001\",\n      \"quantity\": 2,\n      \"price\": 29.99\n    }\n  ],\n  \"total_amount\": 59.98,\n  \"currency\": \"USD\",\n  \"customer_email\": \"buyer@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/payment/process",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["payment", "process"]
+            }
+          }
+        },
+        {
+          "name": "Send SMS Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"+1234567890\",\n  \"message\": \"Your order ORD-abc123 has been confirmed! Thank you for shopping with TikTokSales.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/notify/sms",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["notify", "sms"]
+            }
+          }
+        },
+        {
+          "name": "Send WhatsApp Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"+1234567890\",\n  \"message\": \"🛒 Your order is ready! Track your package at: https://track.tiktoksales.com/ORD-abc123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/notify/whatsapp",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["notify", "whatsapp"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complete Flow Example",
+      "item": [
+        {
+          "name": "1. Register Streamer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo_streamer@example.com\",\n  \"password\": \"demo123\",\n  \"username\": \"demo_streamer\",\n  \"platform\": \"tiktok\",\n  \"follower_count\": 10000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/streamers/register",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["streamers", "register"]
+            }
+          }
+        },
+        {
+          "name": "2. Streamer Uploads Product",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "streamer",
+                  "value": "demo_streamer",
+                  "type": "text"
+                },
+                {
+                  "key": "sku",
+                  "value": "DEMO-SHOE-001",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "Cool Running Sneakers",
+                  "type": "text"
+                },
+                {
+                  "key": "user_description",
+                  "value": "Comfortable running shoes with breathable mesh",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "89.99",
+                  "type": "text"
+                },
+                {
+                  "key": "stock",
+                  "value": "50",
+                  "type": "text"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/products/upload",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["products", "upload"]
+            }
+          }
+        },
+        {
+          "name": "3. Viewer Comments on Live",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer\": \"demo_streamer\",\n  \"client\": \"viewer_maria\",\n  \"timestamp\": \"2024-12-07T16:00:00Z\",\n  \"message\": \"¡Esos zapatos están increíbles! Los quiero comprar\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/comments",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["comments"]
+            }
+          }
+        },
+        {
+          "name": "4. Process Viewer Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer_id\": \"demo_streamer\",\n  \"user_id\": \"viewer_maria\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/process_queue",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["process_queue"]
+            }
+          }
+        },
+        {
+          "name": "5. Register Buyer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"maria@example.com\",\n  \"name\": \"Maria Gonzalez\",\n  \"password\": \"maria123\",\n  \"phone\": \"+1987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{auth_port}}/clients/register",
+              "host": ["{{base_url}}"],
+              "port": "{{auth_port}}",
+              "path": ["clients", "register"]
+            }
+          }
+        },
+        {
+          "name": "6. Complete Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"ORD-demo-001\",\n  \"user_id\": \"maria-uuid\",\n  \"items\": [\n    {\n      \"product_id\": \"DEMO-SHOE-001\",\n      \"quantity\": 1,\n      \"price\": 89.99\n    }\n  ],\n  \"total_amount\": 89.99,\n  \"currency\": \"USD\",\n  \"customer_email\": \"maria@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}:{{ecommerce_port}}/payment/process",
+              "host": ["{{base_url}}"],
+              "port": "{{ecommerce_port}}",
+              "path": ["payment", "process"]
+            }
+          }
+        }
+      ],
+      "description": "Step-by-step example of the complete TikTokSales flow from streamer registration to purchase completion."
+    }
+  ]
+}

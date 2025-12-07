@@ -224,6 +224,105 @@ def create_purchase(payload: PurchaseRequest, current=Depends(get_current_client
     return {"order": order}
 
 
+def get_current_streamer(authorization: str | None = Header(None)) -> dict:
+    """Extract and validate streamer from JWT token."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid Authorization header format")
+    token = parts[1]
+    data = decode_token(token)
+    if not data.get("streamer_id"):
+        raise HTTPException(status_code=403, detail="Not a streamer account")
+    return data
+
+
+@app.post("/streamers/go_live")
+def go_live(current=Depends(get_current_streamer)):
+    """
+    Mark streamer as LIVE. Frame capture will start for this streamer.
+    Only the authenticated streamer can go live.
+    """
+    supabase = get_supabase_client()
+    streamer_id = current.get("streamer_id")
+    
+    try:
+        update = supabase.table("streamers").update({
+            "is_live": True,
+            "live_started_at": datetime.utcnow().isoformat()
+        }).eq("id", streamer_id).execute()
+        
+        if update.data and len(update.data) > 0:
+            logger.info(f"Streamer {streamer_id} is now LIVE")
+            return {
+                "status": "live",
+                "message": "You are now live! Frame capture has started.",
+                "streamer_id": streamer_id,
+                "live_started_at": update.data[0].get("live_started_at")
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Streamer not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to go live: {e}")
+
+
+@app.post("/streamers/go_offline")
+def go_offline(current=Depends(get_current_streamer)):
+    """
+    Mark streamer as OFFLINE. Frame capture will stop for this streamer.
+    Only the authenticated streamer can go offline.
+    """
+    supabase = get_supabase_client()
+    streamer_id = current.get("streamer_id")
+    
+    try:
+        update = supabase.table("streamers").update({
+            "is_live": False,
+            "live_started_at": None
+        }).eq("id", streamer_id).execute()
+        
+        if update.data and len(update.data) > 0:
+            logger.info(f"Streamer {streamer_id} is now OFFLINE")
+            return {
+                "status": "offline",
+                "message": "You are now offline. Frame capture has stopped.",
+                "streamer_id": streamer_id
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Streamer not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to go offline: {e}")
+
+
+@app.get("/streamers/live_status")
+def get_live_status(current=Depends(get_current_streamer)):
+    """Get current live status for the authenticated streamer."""
+    supabase = get_supabase_client()
+    streamer_id = current.get("streamer_id")
+    
+    try:
+        resp = supabase.table("streamers").select("id,username,is_live,live_started_at").eq("id", streamer_id).execute()
+        if resp.data and len(resp.data) > 0:
+            streamer = resp.data[0]
+            return {
+                "streamer_id": streamer.get("id"),
+                "username": streamer.get("username"),
+                "is_live": streamer.get("is_live", False),
+                "live_started_at": streamer.get("live_started_at")
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Streamer not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get status: {e}")
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "auth-service"}

@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS streamers (
     password_hash TEXT NOT NULL,
     platform TEXT DEFAULT 'tiktok',
     follower_count INTEGER DEFAULT 0,
+    is_live BOOLEAN DEFAULT FALSE,
+    live_started_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

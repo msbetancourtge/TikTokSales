@@ -186,13 +186,14 @@ async def worker_loop():
 
 
 async def fetch_streamers_from_supabase() -> list:
-    """Fetch streamer usernames from Supabase REST API."""
+    """Fetch LIVE streamer usernames from Supabase REST API."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         logger.debug("Supabase config not provided; using STREAMERS env or empty list")
         env_list = os.getenv("STREAMERS", "")
         return [s.strip() for s in env_list.split(",") if s.strip()]
 
-    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/streamers?select=username"
+    # Only fetch streamers that are currently live
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/streamers?select=username&is_live=eq.true"
     headers = {
         "apikey": SUPABASE_SERVICE_KEY,
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -203,7 +204,10 @@ async def fetch_streamers_from_supabase() -> list:
             r = await client.get(url, headers=headers)
             if r.status_code == 200:
                 data = r.json()
-                return [row.get("username") for row in data if row.get("username")]
+                live_streamers = [row.get("username") for row in data if row.get("username")]
+                if live_streamers:
+                    logger.info("Found %d live streamer(s): %s", len(live_streamers), live_streamers)
+                return live_streamers
             else:
                 logger.warning("Failed to fetch streamers from Supabase: %s %s", r.status_code, r.text)
                 return []
