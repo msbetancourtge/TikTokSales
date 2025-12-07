@@ -54,6 +54,12 @@ services:
       DB_POSTGRESDB_PASSWORD: ${SUPABASE_DB_PASSWORD}
 
       QUEUE_BULL_REDIS_HOST: redis
+      # Mirror docker run envs for n8n
+      N8N_SECURE_COOKIE: "false"
+      N8N_PROTOCOL: http
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: "5678"
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://72.61.76.44:5678/}
     volumes:
       - n8n-data:/home/node/.n8n
     depends_on:
