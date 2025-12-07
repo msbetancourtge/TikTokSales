@@ -167,17 +167,17 @@ async def process_chat(payload: ChatMessage):
                                 text_json = parts[0].get("text", "{}")
                                 # Parse the JSON string inside text
                                 parsed = json.loads(text_json)
-                                intent = parsed.get("intencion_compra", "no").lower()
+                                intent = parsed.get("intencion_compra").lower()
                                 cantidad = int(parsed.get("cantidad", 0))
                         # Handle direct object response (fallback)
                         elif isinstance(result, dict):
                             text_block = result.get("text", {})
                             if isinstance(text_block, str):
                                 parsed = json.loads(text_block)
-                                intent = parsed.get("intencion_compra", "no").lower()
+                                intent = parsed.get("intencion_compra").lower()
                                 cantidad = int(parsed.get("cantidad", 0))
                             else:
-                                intent = text_block.get("intencion_compra", "no").lower()
+                                intent = text_block.get("intencion_compra").lower()
                                 cantidad = int(text_block.get("cantidad", 0))
                         
                         logger.info(f"Intent classification from n8n: intent={intent}, cantidad={cantidad}")
