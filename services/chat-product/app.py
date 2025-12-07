@@ -98,14 +98,8 @@ class IncomingComment(BaseModel):
 
 class ChatResponse(BaseModel):
     """Chat response with NLP intent, product recommendations, and purchase info."""
-    user_id: str
-    message: str
-    intent: str
-    intent_score: float
     intencion_compra: str
     cantidad: int
-    recommended_products: list = []
-    response_text: str
 
 
 class CommentQueueResponse(BaseModel):
@@ -154,8 +148,8 @@ async def process_chat(payload: ChatMessage):
                 )
                 if webhook_response.status_code == 200:
                     result = webhook_response.json()
-                    # Expect response like: {"buy_intent": "yes"} or {"buy_intent": "no"}
-                    buy_intent = result.get("buy_intent", "").lower()
+                    # Expect response like: {"intencion_compra": "yes"} or {"intencion_compra": "no"}
+                    buy_intent = result.get("intencion_compra", "").lower()
                     intent = "buy" if buy_intent == "yes" else "none"
                     intent_score = 0.95 if intent == "buy" else 0.0
                     logger.info(f"Intent classification from n8n: {intent} (score={intent_score})")
@@ -303,59 +297,6 @@ async def receive_comment(payload: IncomingComment):
     except Exception as e:
         logger.exception("Failed to receive comment via HTTP")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.websocket("/ws/comments")
-async def websocket_comments(ws: WebSocket):
-    """
-    WebSocket endpoint: Real-time comment streaming from TikTok or emulators.
-    
-    Provides bidirectional communication for:
-    - Live comment ingestion (lower latency than polling)
-    - Real-time feedback (ACK for each comment queued)
-    - Graceful error handling and disconnect management
-    
-    Message format (client → server):
-        {"streamer": "user", "client": "web", "message": "Hello!"}
-    
-    Response (server → client):
-        {"ok": true}  on success
-    """
-    await ws.accept()
-    logger.info("WebSocket client connected for comments streaming")
-    
-    try:
-        while True:
-            # Receive JSON from client
-            data = await ws.receive_json()
-            
-            try:
-                # Validate using IncomingComment model
-                incoming = IncomingComment(**data)
-                
-                # Reuse internal queuing logic
-                result = await _queue_comment_internal(incoming)
-                
-                # Send confirmation to client
-                await ws.send_json({"ok": True, "queued_to": result["queued_to"]})
-                
-            except ValueError as e:
-                # Validation error - send error response but keep connection open
-                logger.warning("WebSocket validation error: %s", e)
-                await ws.send_json({"ok": False, "error": str(e)})
-            except HTTPException as e:
-                # Redis/system error - still try to keep connection
-                logger.warning("WebSocket error: %s", e.detail)
-                await ws.send_json({"ok": False, "error": e.detail})
-                
-    except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected gracefully")
-    except Exception as e:
-        logger.exception("WebSocket error: %s", e)
-        try:
-            await ws.close(code=1011, reason="Internal server error")
-        except RuntimeError:
-            logger.warning("WebSocket already closed")
 
 
 @app.get("/status")
