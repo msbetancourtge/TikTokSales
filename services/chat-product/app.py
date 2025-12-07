@@ -97,11 +97,13 @@ class IncomingComment(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """Chat response with NLP intent and product recommendations."""
+    """Chat response with NLP intent, product recommendations, and purchase info."""
     user_id: str
     message: str
     intent: str
     intent_score: float
+    intencion_compra: str
+    cantidad: int
     recommended_products: list = []
     response_text: str
 
