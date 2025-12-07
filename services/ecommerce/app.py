@@ -242,7 +242,7 @@ async def upload_product(
         raise HTTPException(status_code=500, detail=f"Product upload failed: {e}")
 
 
-@app.get("/products/{streamer}/{sku}", response_model=ProductDetailsResponse)
+@app.get("/products/{streamer}/item/{sku}", response_model=ProductDetailsResponse)
 async def get_product(streamer: str, sku: str):
     """
     Get product details by streamer and SKU.
@@ -273,37 +273,7 @@ async def get_product(streamer: str, sku: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/products/streamer/{streamer}", response_model=ProductListResponse)
-async def list_products(streamer: str, limit: int = 50, offset: int = 0):
-    """
-    List all products for a streamer.
-    
-    Args:
-        streamer: Streamer username
-        limit: Maximum number of products (default 50)
-        offset: Offset for pagination (default 0)
-    
-    Returns:
-        ProductListResponse
-    """
-    try:
-        if not db_initialized:
-            raise HTTPException(status_code=503, detail="Database not available")
-        
-        supabase = get_supabase_client()
-        products = await list_streamer_products(supabase, streamer, limit, offset)
-        
-        return ProductListResponse(
-            streamer=streamer,
-            total=len(products),
-            products=[ProductDetailsResponse(**p) for p in products]
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(f"Failed to list products: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# Removed duplicate /products/streamer/{streamer} route - use /products/{streamer} instead
 
 @app.post("/payment/process", response_model=PaymentResponse)
 async def process_payment(payload: PaymentRequest):
