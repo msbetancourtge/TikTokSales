@@ -106,8 +106,8 @@ def register_streamer(payload: StreamerRegister):
         "created_at": datetime.utcnow().isoformat(),
     }
     insert = supabase.table("streamers").insert(record).execute()
-    if insert.error:
-        raise HTTPException(status_code=500, detail=str(insert.error))
+    if insert.status_code != 201:
+        raise HTTPException(status_code=500, detail=f"Supabase insert failed: {insert.data}")
     return {"streamer": insert.data[0]}
 
 
