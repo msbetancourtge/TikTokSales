@@ -38,7 +38,7 @@ app.add_middleware(
 NLP_SERVICE_URL = os.getenv("NLP_SERVICE_URL", "http://nlp-service:8001")
 VISION_SERVICE_URL = os.getenv("VISION_SERVICE_URL", "http://vision-service:8002")
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://72.61.76.44:5678/webhook-test/37b254d7-d925-4e3a-a725-edbbe4f225b8")
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://72.61.76.44:5678/webhook/37b254d7-d925-4e3a-a725-edbbe4f225b8")
 redis_client: aioredis.Redis | None = None
 
 # Initialize Supabase on startup

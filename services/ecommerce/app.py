@@ -4,9 +4,10 @@ Ecommerce Service: Handles payments (Stripe), SMS (Twilio), WhatsApp, and produc
 import os
 import logging
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator, EmailStr, ConfigDict
+import jwt
 
 from db import initialize_supabase, get_supabase_client
 from product_upload import process_product_upload, get_product_by_sku, list_streamer_products
@@ -14,6 +15,10 @@ from product_upload import process_product_upload, get_product_by_sku, list_stre
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# JWT configuration
+JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SUPABASE_SERVICE_KEY")
+JWT_ALGORITHM = "HS256"
 
 app = FastAPI(
     title="Ecommerce Service",
@@ -469,6 +474,100 @@ async def list_all_products(streamer: str, limit: int = 50, offset: int = 0):
         raise
     except Exception as e:
         logger.exception(f"Failed to list products: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def get_current_user_from_token(authorization: str = Header(None)) -> dict:
+    """Extract user info from JWT token."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid Authorization header format")
+    
+    token = parts[1]
+    try:
+        data = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return data
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+
+@app.get("/productos")
+async def get_my_products(authorization: str = Header(None), limit: int = 50, offset: int = 0):
+    """
+    Lista los productos del streamer autenticado.
+    Requiere token JWT en el header Authorization.
+    
+    Returns:
+        Lista de productos del streamer actual
+    """
+    try:
+        if not db_initialized:
+            raise HTTPException(status_code=503, detail="Database not available")
+        
+        # Get user from token
+        user_data = get_current_user_from_token(authorization)
+        
+        # Get streamer username from token or fetch from DB
+        streamer_id = user_data.get("streamer_id")
+        email = user_data.get("email")
+        
+        if not streamer_id and not email:
+            raise HTTPException(status_code=401, detail="Invalid token: missing user info")
+        
+        supabase = get_supabase_client()
+        
+        # Get username from streamers table
+        if streamer_id:
+            resp = supabase.table("streamers").select("username").eq("id", streamer_id).execute()
+        else:
+            resp = supabase.table("streamers").select("username").eq("email", email).execute()
+        
+        if not resp.data or len(resp.data) == 0:
+            raise HTTPException(status_code=404, detail="Streamer not found")
+        
+        username = resp.data[0].get("username")
+        
+        # Get products for this streamer
+        query = supabase.table("products") \
+            .select("id,sku,streamer,name,user_description,tag,model_description,price,stock,image_urls,category,created_at") \
+            .eq("streamer", username)
+        
+        response = query.range(offset, offset + limit - 1).execute()
+        
+        products = []
+        if response.data:
+            for p in response.data:
+                products.append({
+                    "id": str(p.get("id")),
+                    "sku": p.get("sku"),
+                    "streamer": p.get("streamer"),
+                    "name": p.get("name"),
+                    "price": float(p.get("price", 0)),
+                    "currency": "USD",
+                    "description": p.get("user_description"),
+                    "tag": p.get("tag"),
+                    "model_description": p.get("model_description"),
+                    "stock": p.get("stock", 0),
+                    "image_urls": p.get("image_urls"),
+                    "category": p.get("category"),
+                    "created_at": p.get("created_at")
+                })
+        
+        return {
+            "streamer": username,
+            "total": len(products),
+            "products": products
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to get my products: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

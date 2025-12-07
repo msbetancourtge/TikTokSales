@@ -67,7 +67,7 @@ Tests use `unittest.mock` to:
 
 The n8n webhook URL is configurable via:
 ```python
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://72.61.76.44:5678/webhook-test/37b254d7-d925-4e3a-a725-edbbe4f225b8")
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://72.61.76.44:5678/webhook/37b254d7-d925-4e3a-a725-edbbe4f225b8")
 ```
 
 To override in tests or deployment:
