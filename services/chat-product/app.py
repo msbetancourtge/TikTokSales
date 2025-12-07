@@ -514,17 +514,53 @@ async def _queue_comment_internal(payload: IncomingComment) -> dict:
         logger.error("Failed to queue comment in Redis: %s", e)
         raise HTTPException(status_code=500, detail=f"Redis queuing failed: {e}")
     
-    # 3) Store in Supabase for persistence (best-effort, non-blocking)
+    # 3) Call NLP webhook to classify intent immediately
+    intent = "no"
+    cantidad = 0
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            webhook_response = await client.post(
+                N8N_WEBHOOK_URL,
+                json={"message": payload.message},
+                headers={"Content-Type": "application/json"}
+            )
+            if webhook_response.status_code == 200:
+                result = webhook_response.json()
+                logger.info(f"NLP webhook response for '{payload.message}': {result}")
+                if isinstance(result, list) and len(result) > 0:
+                    intent = result[0].get("intent", "no").lower()
+                    cantidad = int(result[0].get("cantidad", 0))
+                elif isinstance(result, dict):
+                    intent = result.get("intent", "no").lower()
+                    cantidad = int(result.get("cantidad", 0))
+    except Exception as e:
+        logger.warning("Failed to call NLP webhook: %s", e)
+    
+    # 4) Store in Supabase for persistence with intent
     if db_initialized:
         try:
             supabase = get_supabase_client()
             supabase.table("chat_messages").insert({
-                "user_id": payload.client,  # client is the user/commenter
+                "user_id": payload.client,
                 "streamer": payload.streamer,
                 "client": payload.client,
                 "timestamp": payload.timestamp,
-                "message": payload.message
+                "message": payload.message,
+                "intent": intent,
+                "cantidad": cantidad
             }).execute()
+            
+            # 5) If buying intent detected, add to buyers list
+            if intent == "yes":
+                await add_buyer_intent(
+                    streamer=payload.streamer,
+                    username=payload.client,
+                    message=payload.message,
+                    cantidad=cantidad,
+                    timestamp=payload.timestamp
+                )
+                logger.info(f"Buyer intent detected: {payload.client} for {payload.streamer}")
+                
         except Exception as e:
             logger.warning("Failed to store comment in Supabase: %s", e)
             # Don't fail the request - Supabase is best-effort
@@ -533,7 +569,9 @@ async def _queue_comment_internal(payload: IncomingComment) -> dict:
         "ok": True,
         "queued_to": list_key,
         "stream": "comments_stream",
-        "timestamp": payload.timestamp
+        "timestamp": payload.timestamp,
+        "intent": intent,
+        "cantidad": cantidad
     }
 
 
