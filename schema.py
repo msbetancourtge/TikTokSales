@@ -250,6 +250,30 @@ ON CONFLICT DO NOTHING;
 COMMENT ON TABLE nlp_intents IS 'Master list of intent types for NLP classification';
 """
 
+MIGRATION_009_STREAMER_FRAMES = """
+-- Table: streamer_frames
+-- Purpose: Periodically-captured frames from streamers stored in MinIO
+-- Indexes: (streamer, frame_timestamp)
+
+CREATE TABLE IF NOT EXISTS streamer_frames (
+    id BIGSERIAL PRIMARY KEY,
+    streamer VARCHAR(255) NOT NULL,
+    frame_timestamp TIMESTAMPTZ NOT NULL,
+    minio_url TEXT NOT NULL,
+    minio_object VARCHAR(1024) NOT NULL,
+    content_type VARCHAR(128),
+    width INT,
+    height INT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_streamer_frames_streamer_timestamp
+ON streamer_frames(streamer, frame_timestamp DESC);
+
+COMMENT ON TABLE streamer_frames IS 'Individual frames captured from streamers video feeds and stored in MinIO';
+COMMENT ON COLUMN streamer_frames.minio_url IS 'S3/MinIO URL stored as minio://bucket/object or http(s) presigned URL';
+"""
+
 # Python ORM models (for reference in the Python services)
 
 ORM_MODELS = """

@@ -6,7 +6,7 @@ import logging
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, validator, EmailStr
+from pydantic import BaseModel, Field, validator, EmailStr, ConfigDict
 
 from db import initialize_supabase, get_supabase_client
 from product_upload import process_product_upload, get_product_by_sku, list_streamer_products
@@ -116,6 +116,8 @@ class HealthResponse(BaseModel):
 
 class ProductUploadResponse(BaseModel):
     """Product upload response."""
+    model_config = ConfigDict(protected_namespaces=())
+    
     product_id: str
     sku: str
     name: str
@@ -129,6 +131,8 @@ class ProductUploadResponse(BaseModel):
 
 class ProductDetailsResponse(BaseModel):
     """Product details response."""
+    model_config = ConfigDict(protected_namespaces=())
+    
     id: int
     sku: str
     streamer: str
@@ -203,7 +207,8 @@ async def upload_product(
             "sku": product_data["sku"],
             "name": product_data["name"],
             "user_description": product_data["user_description"],
-            "model_description": product_data["model_description"],
+            "model_description": product_data.get("model_description"),
+            "category": product_data.get("category"),
             "price": product_data["price"],
             "stock": product_data["stock"],
             "image_urls": product_data["image_urls"],

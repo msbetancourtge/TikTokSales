@@ -133,7 +133,7 @@ async def get_model_description_from_vision(
     image_urls: List[str],
     streamer: str,
     product_name: str
-) -> str:
+) -> dict:
     """
     Call Vision service to generate product description from images.
     
@@ -151,27 +151,24 @@ async def get_model_description_from_vision(
                 "streamer": streamer,
                 "product_name": product_name,
                 "frame_urls": image_urls,
-                "task": "generate_description"
             }
-            
-            response = await client.post(
-                f"{VISION_SERVICE_URL}/analyze_product",
-                json=payload
-            )
-            
+
+            response = await client.post(f"{VISION_SERVICE_URL}/analyze_product", json=payload)
+
             if response.status_code != 200:
                 logger.warning(f"Vision service returned {response.status_code}")
-                return ""
-            
+                return {"description": "", "category": None}
+
             data = response.json()
             description = data.get("description", "")
-            
-            logger.info(f"Got model description from Vision: {len(description)} chars")
-            return description
-    
+            category = data.get("category")
+
+            logger.info(f"Got model description from Vision: {len(description)} chars; category={category}")
+            return {"description": description, "category": category}
+
     except Exception as e:
         logger.warning(f"Failed to get model description from Vision: {e}")
-        return ""
+        return {"description": "", "category": None}
 
 
 async def process_product_upload(
@@ -223,13 +220,11 @@ async def process_product_upload(
         
         logger.info(f"Uploaded {len(image_urls)} images for {streamer}/{sku}")
         
-        # Get model description from Vision service
+        # Get model description and category from Vision service
         url_list = [img["url"] for img in image_urls]
-        model_description = await get_model_description_from_vision(
-            url_list,
-            streamer,
-            name
-        )
+        vision_result = await get_model_description_from_vision(url_list, streamer, name)
+        model_description = vision_result.get("description") if isinstance(vision_result, dict) else ""
+        category = vision_result.get("category") if isinstance(vision_result, dict) else None
         
         # Prepare product data for database
         product_data = {
@@ -238,6 +233,7 @@ async def process_product_upload(
             "name": name,
             "user_description": user_description,
             "model_description": model_description,
+            "category": category,
             "price": price,
             "stock": stock,
             "image_urls": json.dumps(image_urls),

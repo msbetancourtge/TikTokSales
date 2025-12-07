@@ -81,6 +81,7 @@ cd "$PROJECT_ROOT"
 python -m pytest \
   "$SCRIPT_DIR/test_full_pipeline.py::${TEST_PATTERN}" \
   "$SCRIPT_DIR/test_ecommerce.py::${TEST_PATTERN}" \
+  "$SCRIPT_DIR/test_end_to_end.py::${TEST_PATTERN}" \
   -v \
   -s \
   --tb=short \

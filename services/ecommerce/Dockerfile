@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
 COPY db.py .
 COPY __init__.py .
+COPY product_upload.py .
 
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
