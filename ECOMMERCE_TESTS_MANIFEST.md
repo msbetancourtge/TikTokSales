@@ -249,6 +249,10 @@ curl -X POST http://localhost:8082/notify/sms \
 - pytest-asyncio==0.21.1
 - httpx==0.24.3
 - redis==5.0.1
+ - pytest==7.4.3
+ - pytest-asyncio==0.21.1
+ - httpx==0.24.1
+ - redis==5.0.1
 
 ### Service Requirements
 - Ecommerce service running on port 8082

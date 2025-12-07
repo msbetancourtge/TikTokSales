@@ -8,4 +8,4 @@ python-multipart==0.0.6
 supabase==2.0.3
 python-dotenv==1.0.0
 redis==4.7.7
-httpx==0.24.3
+httpx==0.24.1

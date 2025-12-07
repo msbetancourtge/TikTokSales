@@ -160,6 +160,10 @@ cd tests && ./run_tests.sh
 - pytest-asyncio==0.21.1
 - httpx==0.24.3
 - redis==5.0.1 (for integration)
+ - pytest==7.4.3
+ - pytest-asyncio==0.21.1
+ - httpx==0.24.1
+ - redis==5.0.1 (for integration)
 
 ## Status
 

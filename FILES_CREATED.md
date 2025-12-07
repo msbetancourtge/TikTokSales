@@ -42,7 +42,7 @@
 **Test dependencies**
 - pytest==7.4.3
 - pytest-asyncio==0.21.1
-- httpx==0.24.3
+- httpx==0.24.1
 - redis==5.0.1
 
 #### 4. `tests/README.md` (70+ pages)
