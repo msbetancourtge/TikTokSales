@@ -143,6 +143,8 @@ services:
     restart: unless-stopped
     environment:
       VISION_MODEL_PATH: /models/vision
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
     volumes:
       - ../services/vision-service/models:/models/vision
     ports:

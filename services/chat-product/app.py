@@ -65,9 +65,14 @@ async def startup_event():
 
 
 class ChatMessage(BaseModel):
-    """Chat message payload."""
-    user_id: str = Field(..., min_length=1, max_length=255)
-    message: str = Field(..., min_length=1, max_length=2000)
+    """Chat message payload from live stream comments.
+    
+    Note: user_id is the commenter's username/handle from the platform (TikTok, etc).
+    Users do NOT need to be registered in our system to submit comments.
+    """
+    user_id: str = Field(..., min_length=1, max_length=255, description="Commenter username from platform (no registration required)")
+    streamer_id: str = Field(..., min_length=1, max_length=255, description="Streamer username")
+    message: str = Field(..., min_length=1, max_length=2000, description="Comment/chat message content")
     
     @validator('message')
     def message_must_not_be_empty(cls, v):
@@ -99,12 +104,15 @@ class IncomingComment(BaseModel):
 class ChatResponse(BaseModel):
     """Chat response with NLP intent, product recommendations, and purchase info."""
     user_id: str
+    streamer_id: str
     message: str
     intent: str  # "yes" or "no" - buying intent from webhook
     cantidad: int
     timestamp: str
+    matched_product: Optional[dict] = None  # Product matched by vision service
     recommended_products: list = []
     response_text: str
+    payment_ready: bool = False  # True if product matched and ready for payment
 
 
 class CommentQueueResponse(BaseModel):
@@ -113,6 +121,24 @@ class CommentQueueResponse(BaseModel):
     queued_to: str
     stream: str = "comments_stream"
     timestamp: str
+
+
+class ProcessQueueRequest(BaseModel):
+    """Request to process a user's message queue."""
+    streamer_id: str = Field(..., min_length=1, max_length=255, description="Streamer username")
+    user_id: str = Field(..., min_length=1, max_length=255, description="User/client username from platform")
+
+
+class ProcessQueueResponse(BaseModel):
+    """Response after processing a user's message queue."""
+    user_id: str
+    streamer_id: str
+    messages_processed: int
+    intent: str  # "yes" or "no"
+    cantidad: int
+    matched_product: Optional[dict] = None
+    payment_ready: bool = False
+    response_text: str
 
 
 class HealthResponse(BaseModel):
@@ -178,19 +204,84 @@ async def process_chat(payload: ChatMessage):
             intent = "no"
             cantidad = 0
         
-        # Product recommendations if buying intent detected
+        # Initialize response variables
+        matched_product = None
+        payment_ready = False
         recommended_products = []
-        if intent == "yes":
-            recommended_products = [
-                {
-                    "id": "prod_001",
-                    "name": "Sample Product",
-                    "price": 29.99,
-                    "url": "https://example.com/product/1"
-                }
-            ]
+        response_text = "¿En qué puedo ayudarte?"
         
-        response_text = "¿Te gustaría ver más opciones?" if intent == "yes" else "¿En qué puedo ayudarte?"
+        # If buying intent detected, find product from live stream frame
+        if intent == "yes":
+            try:
+                # Step 1: Find the closest frame from streamer_frames by timestamp
+                frame_url = None
+                if db_initialized:
+                    supabase = get_supabase_client()
+                    # Get frames for this streamer, ordered by timestamp (closest first)
+                    frames_resp = supabase.table("streamer_frames") \
+                        .select("id,minio_url,frame_timestamp") \
+                        .eq("streamer", payload.streamer_id) \
+                        .order("frame_timestamp", desc=True) \
+                        .limit(1) \
+                        .execute()
+                    
+                    if frames_resp.data and len(frames_resp.data) > 0:
+                        frame_url = frames_resp.data[0].get("minio_url")
+                        logger.info(f"Found frame for streamer {payload.streamer_id}: {frame_url}")
+                    else:
+                        logger.warning(f"No frames found for streamer {payload.streamer_id}")
+                
+                # Step 2: Call vision-service to match product from frame (MinIO URL)
+                if frame_url:
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        vision_response = await client.post(
+                            f"{VISION_SERVICE_URL}/match_product",
+                            json={
+                                "frame_urls": [frame_url],
+                                "streamer_id": payload.streamer_id
+                            },
+                            headers={"Content-Type": "application/json"}
+                        )
+                        if vision_response.status_code == 200:
+                            vision_result = vision_response.json()
+                            product_id = vision_result.get("productId")
+                            logger.info(f"Vision service matched product_id: {product_id}")
+                            
+                            # Step 3: Get product details from database
+                            if product_id and db_initialized:
+                                product_resp = supabase.table("products") \
+                                    .select("id,name,price,description,image_url,streamer_id") \
+                                    .eq("id", product_id) \
+                                    .limit(1) \
+                                    .execute()
+                                
+                                if product_resp.data and len(product_resp.data) > 0:
+                                    product = product_resp.data[0]
+                                    matched_product = {
+                                        "id": product.get("id"),
+                                        "name": product.get("name"),
+                                        "price": product.get("price"),
+                                        "description": product.get("description"),
+                                        "image_url": product.get("image_url"),
+                                        "cantidad": cantidad,
+                                        "total": float(product.get("price", 0)) * cantidad
+                                    }
+                                    payment_ready = True
+                                    response_text = f"¡Encontré el producto! {product.get('name')} - ${product.get('price')}. ¿Deseas proceder con la compra de {cantidad} unidad(es)?"
+                                    logger.info(f"Product matched and ready for payment: {matched_product}")
+                        else:
+                            logger.warning(f"Vision service returned status {vision_response.status_code}")
+                
+                # Fallback: recommend sample products if no match
+                if not matched_product:
+                    recommended_products = [
+                        {"id": "prod_001", "name": "Sample Product", "price": 29.99, "url": "https://example.com/product/1"}
+                    ]
+                    response_text = "No pude identificar el producto exacto. ¿Te gustaría ver más opciones?"
+                    
+            except Exception as e:
+                logger.error(f"Error in buying intent flow: {e}")
+                response_text = "Hubo un problema al buscar el producto. Por favor intenta de nuevo."
         
         # Store chat message in Supabase if available
         if db_initialized:
@@ -198,6 +289,7 @@ async def process_chat(payload: ChatMessage):
                 supabase = get_supabase_client()
                 supabase.table("chat_messages").insert({
                     "user_id": payload.user_id,
+                    "streamer": payload.streamer_id,
                     "message": payload.message,
                     "intent": intent,
                     "cantidad": cantidad,
@@ -209,12 +301,15 @@ async def process_chat(payload: ChatMessage):
         
         return ChatResponse(
             user_id=payload.user_id,
+            streamer_id=payload.streamer_id,
             message=payload.message,
             intent=intent,
             cantidad=cantidad,
             timestamp=timestamp,
+            matched_product=matched_product,
             recommended_products=recommended_products,
-            response_text=response_text
+            response_text=response_text,
+            payment_ready=payment_ready
         )
     
     except Exception as e:
@@ -330,6 +425,206 @@ async def service_status():
         "vision_service": VISION_SERVICE_URL,
         "redis_url": REDIS_URL
     }
+
+
+@app.post("/process_queue", response_model=ProcessQueueResponse)
+async def process_user_queue(payload: ProcessQueueRequest):
+    """
+    Process all messages in a user's queue to determine buying intent.
+    
+    Flow:
+    1. Get all messages from Redis queue for this user
+    2. Send ALL messages to NLP webhook for intent analysis
+    3. If intent = yes, find product from live stream frame via vision service
+    4. Clear processed messages from queue
+    5. Return result with matched product if found
+    
+    Args:
+        payload: ProcessQueueRequest with streamer_id and user_id
+    
+    Returns:
+        ProcessQueueResponse with intent, matched product, and payment status
+    """
+    list_key = f"chat:queue:{payload.streamer_id}:{payload.user_id}"
+    
+    # Check Redis availability
+    if not redis_client:
+        raise HTTPException(status_code=503, detail="Redis service unavailable")
+    
+    try:
+        # Step 1: Get all messages from user's queue
+        messages_raw = await redis_client.lrange(list_key, 0, -1)
+        
+        if not messages_raw or len(messages_raw) == 0:
+            return ProcessQueueResponse(
+                user_id=payload.user_id,
+                streamer_id=payload.streamer_id,
+                messages_processed=0,
+                intent="no",
+                cantidad=0,
+                matched_product=None,
+                payment_ready=False,
+                response_text="No hay mensajes en la cola para procesar."
+            )
+        
+        # Parse messages and extract first timestamp
+        messages = []
+        first_timestamp = None
+        for msg_raw in messages_raw:
+            try:
+                msg = json.loads(msg_raw)
+                messages.append(msg.get("message", ""))
+                # Capture the timestamp from the FIRST message (when buying intent started)
+                if first_timestamp is None and msg.get("timestamp"):
+                    first_timestamp = msg.get("timestamp")
+            except json.JSONDecodeError:
+                messages.append(str(msg_raw))
+        
+        # Fallback to current time if no timestamp found
+        if first_timestamp is None:
+            first_timestamp = datetime.utcnow().isoformat()
+        
+        logger.info(f"Processing {len(messages)} messages for user {payload.user_id}, first_timestamp: {first_timestamp}")
+        
+        # Step 2: Send ALL messages to NLP webhook for intent detection
+        intent = "no"
+        cantidad = 0
+        
+        try:
+            # Combine all messages for context
+            combined_messages = " | ".join(messages)
+            
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                webhook_response = await client.post(
+                    N8N_WEBHOOK_URL,
+                    json={"message": combined_messages},
+                    headers={"Content-Type": "application/json"}
+                )
+                if webhook_response.status_code == 200:
+                    result = webhook_response.json()
+                    logger.info(f"Webhook response: {result}")
+                    
+                    # Parse response: [{"intent": "yes/no", "cantidad": int}]
+                    if isinstance(result, list) and len(result) > 0:
+                        first_item = result[0]
+                        intent = first_item.get("intent", "no").lower()
+                        cantidad = int(first_item.get("cantidad", 0))
+                    elif isinstance(result, dict):
+                        intent = result.get("intent", "no").lower()
+                        cantidad = int(result.get("cantidad", 0))
+                    
+                    logger.info(f"Intent from NLP: {intent}, cantidad: {cantidad}")
+                else:
+                    logger.warning(f"Webhook returned status {webhook_response.status_code}")
+        except Exception as e:
+            logger.error(f"Failed to call NLP webhook: {e}")
+        
+        # Initialize response variables
+        matched_product = None
+        payment_ready = False
+        response_text = "¿En qué puedo ayudarte?"
+        
+        # Step 3: If buying intent, find product from live stream frame
+        if intent == "yes":
+            try:
+                frame_url = None
+                supabase = get_supabase_client() if db_initialized else None
+                
+                # Get the frame closest to the FIRST message timestamp (when buying intent started)
+                if supabase:
+                    # Find frame with timestamp <= first_timestamp (closest before or at)
+                    frames_resp = supabase.table("streamer_frames") \
+                        .select("id,minio_url,frame_timestamp") \
+                        .eq("streamer", payload.streamer_id) \
+                        .lte("frame_timestamp", first_timestamp) \
+                        .order("frame_timestamp", desc=True) \
+                        .limit(1) \
+                        .execute()
+                    
+                    if frames_resp.data and len(frames_resp.data) > 0:
+                        frame_url = frames_resp.data[0].get("minio_url")
+                        frame_ts = frames_resp.data[0].get("frame_timestamp")
+                        logger.info(f"Found frame at {frame_ts} for first_timestamp {first_timestamp}: {frame_url}")
+                    else:
+                        # Fallback: get the earliest frame after first_timestamp
+                        frames_resp = supabase.table("streamer_frames") \
+                            .select("id,minio_url,frame_timestamp") \
+                            .eq("streamer", payload.streamer_id) \
+                            .gte("frame_timestamp", first_timestamp) \
+                            .order("frame_timestamp", desc=False) \
+                            .limit(1) \
+                            .execute()
+                        
+                        if frames_resp.data and len(frames_resp.data) > 0:
+                            frame_url = frames_resp.data[0].get("minio_url")
+                            frame_ts = frames_resp.data[0].get("frame_timestamp")
+                            logger.info(f"Fallback frame at {frame_ts} for first_timestamp {first_timestamp}: {frame_url}")
+                
+                # Call vision service with frame URL
+                if frame_url:
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        vision_response = await client.post(
+                            f"{VISION_SERVICE_URL}/match_product",
+                            json={
+                                "frame_urls": [frame_url],
+                                "streamer_id": payload.streamer_id
+                            },
+                            headers={"Content-Type": "application/json"}
+                        )
+                        if vision_response.status_code == 200:
+                            vision_result = vision_response.json()
+                            product_id = vision_result.get("productId")
+                            logger.info(f"Vision matched product_id: {product_id}")
+                            
+                            # Get product details
+                            if product_id and supabase:
+                                product_resp = supabase.table("products") \
+                                    .select("id,name,price,description,image_url") \
+                                    .eq("id", product_id) \
+                                    .limit(1) \
+                                    .execute()
+                                
+                                if product_resp.data and len(product_resp.data) > 0:
+                                    product = product_resp.data[0]
+                                    matched_product = {
+                                        "id": product.get("id"),
+                                        "name": product.get("name"),
+                                        "price": product.get("price"),
+                                        "description": product.get("description"),
+                                        "image_url": product.get("image_url"),
+                                        "cantidad": cantidad,
+                                        "total": float(product.get("price", 0)) * cantidad
+                                    }
+                                    payment_ready = True
+                                    response_text = f"¡Encontré el producto! {product.get('name')} - ${product.get('price')}. ¿Deseas comprar {cantidad} unidad(es)?"
+                
+                if not matched_product:
+                    response_text = "Detecté intención de compra pero no pude identificar el producto. ¿Podrías ser más específico?"
+                    
+            except Exception as e:
+                logger.error(f"Error in buying intent flow: {e}")
+                response_text = "Hubo un problema al buscar el producto. Intenta de nuevo."
+        
+        # Step 4: Clear processed messages from queue
+        await redis_client.delete(list_key)
+        logger.info(f"Cleared queue {list_key} after processing {len(messages)} messages")
+        
+        return ProcessQueueResponse(
+            user_id=payload.user_id,
+            streamer_id=payload.streamer_id,
+            messages_processed=len(messages),
+            intent=intent,
+            cantidad=cantidad,
+            matched_product=matched_product,
+            payment_ready=payment_ready,
+            response_text=response_text
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error processing queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

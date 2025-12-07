@@ -5,7 +5,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 COPY . /app
 
-RUN pip install --no-cache-dir fastapi uvicorn[standard] pillow
+RUN pip install --no-cache-dir fastapi uvicorn[standard] pillow supabase httpx
 RUN chown -R appuser:appuser /app
 
 USER appuser

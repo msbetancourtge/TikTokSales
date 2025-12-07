@@ -1,9 +1,16 @@
 from fastapi import FastAPI, HTTPException, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
-from typing import List
+from typing import List, Optional
+import os
 import io
+import logging
 from datetime import datetime
+from supabase import create_client, Client
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -11,7 +18,21 @@ try:
 except Exception:
     PIL_AVAILABLE = False
 
-app = FastAPI()
+app = FastAPI(title="Vision Service", description="CV-based product matching from live stream frames")
+
+# Supabase configuration
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+supabase_client: Optional[Client] = None
+
+def get_supabase_client() -> Optional[Client]:
+    global supabase_client
+    if supabase_client is None and SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        try:
+            supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        except Exception as e:
+            logger.error(f"Failed to create Supabase client: {e}")
+    return supabase_client
 
 # Add CORS middleware with restricted origins
 app.add_middleware(
@@ -23,7 +44,8 @@ app.add_middleware(
 )
 
 class FramePayload(BaseModel):
-    frame_urls: List[str] = Field(..., min_items=1, max_items=100)
+    frame_urls: List[str] = Field(..., min_length=1, max_length=100)
+    streamer_id: Optional[str] = None  # Optional: filter products by streamer
     
     @validator('frame_urls', each_item=True)
     def validate_url(cls, v):
@@ -33,15 +55,64 @@ class FramePayload(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "service": "vision-service"}
 
 @app.post("/match_product")
 def match(payload: FramePayload):
+    """
+    Match product from frame(s) using CV model.
+    
+    In production: This would run a CNN to extract features from frames
+    and match against product catalog embeddings.
+    
+    For demo: Returns the most recent product for the streamer.
+    """
     try:
-        # placeholder matching: always returns None / demo product
-        # later: compute embeddings and nearest neighbour to products
-        return {"productId": None, "score": 0.0}
+        logger.info(f"Matching product from {len(payload.frame_urls)} frame(s)")
+        
+        # Get Supabase client
+        supabase = get_supabase_client()
+        if not supabase:
+            logger.warning("Supabase not available, returning demo product")
+            return {"productId": "demo-001", "score": 0.75, "name": "Demo Product", "price": 29.99}
+        
+        # TODO: In production, implement actual CV matching:
+        # 1. Download frame from MinIO URL
+        # 2. Run CNN to extract features
+        # 3. Compare with product catalog embeddings
+        # 4. Return best match
+        
+        # For demo: Get the first available product (or filter by streamer if provided)
+        try:
+            query = supabase.table("products").select("id,name,price,description,image_url,streamer_id").limit(1)
+            
+            # If streamer_id provided, filter by it
+            if payload.streamer_id:
+                query = query.eq("streamer_id", payload.streamer_id)
+            
+            result = query.execute()
+            
+            if result.data and len(result.data) > 0:
+                product = result.data[0]
+                logger.info(f"Matched product: {product.get('id')} - {product.get('name')}")
+                return {
+                    "productId": str(product.get("id")),
+                    "score": 0.85,  # Demo confidence score
+                    "name": product.get("name"),
+                    "price": product.get("price"),
+                    "description": product.get("description"),
+                    "image_url": product.get("image_url")
+                }
+            else:
+                logger.info("No products found in database")
+                return {"productId": None, "score": 0.0}
+                
+        except Exception as db_err:
+            logger.error(f"Database error: {db_err}")
+            return {"productId": None, "score": 0.0}
+            
     except Exception as e:
+        logger.error(f"Error in match_product: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
