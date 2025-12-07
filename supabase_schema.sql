@@ -43,14 +43,18 @@ CREATE TABLE IF NOT EXISTS clients (
 -- ============================================
 CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    streamer TEXT,
     streamer_id UUID REFERENCES streamers(id) ON DELETE CASCADE,
     sku TEXT,
     name TEXT NOT NULL,
+    user_description TEXT,
     description TEXT,
     tag TEXT,
     model_description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     image_url TEXT,
+    image_urls TEXT,
+    minio_bucket TEXT,
     stock INTEGER DEFAULT 0,
     category TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
