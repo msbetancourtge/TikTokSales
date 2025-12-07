@@ -52,8 +52,22 @@ except Exception as e:
     minio_client = None
 
 
+# Public read policy for the bucket
+PUBLIC_READ_POLICY = '''{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {"AWS": ["*"]},
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::%s/*"]
+        }
+    ]
+}'''
+
+
 async def ensure_bucket_exists():
-    """Ensure MinIO bucket exists."""
+    """Ensure MinIO bucket exists and has public read access."""
     if not minio_client:
         logger.warning("MinIO client not available")
         return False
@@ -65,6 +79,15 @@ async def ensure_bucket_exists():
             logger.info(f"Created MinIO bucket: {MINIO_BUCKET}")
         else:
             logger.info(f"MinIO bucket already exists: {MINIO_BUCKET}")
+        
+        # Set public read policy on the bucket
+        try:
+            policy = PUBLIC_READ_POLICY % MINIO_BUCKET
+            minio_client.set_bucket_policy(MINIO_BUCKET, policy)
+            logger.info(f"Set public read policy on bucket: {MINIO_BUCKET}")
+        except Exception as policy_err:
+            logger.warning(f"Failed to set bucket policy (may already exist): {policy_err}")
+        
         return True
     except Exception as e:
         logger.error(f"Failed to ensure bucket: {e}")

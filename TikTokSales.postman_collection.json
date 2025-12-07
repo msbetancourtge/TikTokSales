@@ -662,6 +662,30 @@
             },
             "description": "Test endpoint that returns a placeholder PNG frame with streamer name and timestamp."
           }
+        },
+        {
+          "name": "CNN Webhook - Analyze Product (n8n)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer\": \"cool_streamer\",\n  \"product_name\": \"Cool Vintage T-Shirt\",\n  \"image_urls\": [\n    \"http://72.61.76.44:9000/tiktoksales-products/cool_streamer/SHIRT-001/image.jpg\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:5678/webhook-test/933dc599-d304-45a0-b9c3-2dbb5dd39c5c",
+              "protocol": "http",
+              "host": ["72", "61", "76", "44"],
+              "port": "5678",
+              "path": ["webhook-test", "933dc599-d304-45a0-b9c3-2dbb5dd39c5c"]
+            },
+            "description": "CNN webhook for product image analysis. Returns tag and model_description. Called automatically during product upload."
+          }
         }
       ]
     },
