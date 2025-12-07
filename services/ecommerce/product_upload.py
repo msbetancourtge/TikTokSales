@@ -30,6 +30,8 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minio")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minio123")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "tiktoksales-products")
 MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "False").lower() == "true"
+# Public URL for external access to MinIO (used in image URLs sent to CNN)
+MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "http://72.61.76.44:9000")
 
 # Vision Service Configuration
 VISION_SERVICE_URL = os.getenv("VISION_SERVICE_URL", "http://vision-service:8002")
@@ -110,10 +112,10 @@ async def upload_image_to_minio(
             content_type=file.content_type or "application/octet-stream"
         )
         
-        # Generate URL
-        url = f"minio://{MINIO_BUCKET}/{object_name}"
+        # Generate public URL for external access (CNN model)
+        url = f"{MINIO_PUBLIC_URL}/{MINIO_BUCKET}/{object_name}"
         
-        logger.info(f"Uploaded image to MinIO: {object_name} ({file_size} bytes)")
+        logger.info(f"Uploaded image to MinIO: {object_name} ({file_size} bytes) - URL: {url}")
         
         return {
             "url": url,
