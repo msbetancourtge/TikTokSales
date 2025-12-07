@@ -154,11 +154,37 @@ async def process_chat(payload: ChatMessage):
                 )
                 if webhook_response.status_code == 200:
                     result = webhook_response.json()
-                    # Expect response: {"text": {"intencion_compra": "yes/no", "cantidad": int}}
-                    text_block = result.get("text", {})
-                    intent = text_block.get("intencion_compra").lower()
-                    cantidad = int(text_block.get("cantidad", 0))
-                    logger.info(f"Intent classification from n8n: intent={intent}, cantidad={cantidad}")
+                    logger.info(f"Raw webhook response: {result}")
+                    
+                    # Parse Gemini model response structure:
+                    # [{content: {parts: [{text: "{\"intencion_compra\": \"yes\", \"cantidad\": 1}"}]}}]
+                    try:
+                        # Handle array response from Gemini
+                        if isinstance(result, list) and len(result) > 0:
+                            content = result[0].get("content", {})
+                            parts = content.get("parts", [])
+                            if parts and len(parts) > 0:
+                                text_json = parts[0].get("text", "{}")
+                                # Parse the JSON string inside text
+                                parsed = json.loads(text_json)
+                                intent = parsed.get("intencion_compra", "no").lower()
+                                cantidad = int(parsed.get("cantidad", 0))
+                        # Handle direct object response (fallback)
+                        elif isinstance(result, dict):
+                            text_block = result.get("text", {})
+                            if isinstance(text_block, str):
+                                parsed = json.loads(text_block)
+                                intent = parsed.get("intencion_compra", "no").lower()
+                                cantidad = int(parsed.get("cantidad", 0))
+                            else:
+                                intent = text_block.get("intencion_compra", "no").lower()
+                                cantidad = int(text_block.get("cantidad", 0))
+                        
+                        logger.info(f"Intent classification from n8n: intent={intent}, cantidad={cantidad}")
+                    except (json.JSONDecodeError, KeyError, TypeError) as parse_err:
+                        logger.warning(f"Failed to parse webhook response: {parse_err}")
+                        intent = "no"
+                        cantidad = 0
                 else:
                     logger.warning(f"n8n webhook returned status {webhook_response.status_code}")
         except Exception as e:
