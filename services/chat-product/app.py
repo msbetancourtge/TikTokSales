@@ -147,6 +147,142 @@ class HealthResponse(BaseModel):
     service: str = "chat-product"
 
 
+class BuyerInfo(BaseModel):
+    """Info about a user with buying intent."""
+    id: Optional[int] = None
+    username: str
+    message: str
+    cantidad: int
+    timestamp: str
+    product_name: Optional[str] = None
+    product_price: Optional[float] = None
+    product_id: Optional[str] = None
+    status: str = "pending"  # pending, contacted, sold, cancelled
+
+
+class BuyersListResponse(BaseModel):
+    """Response with list of buyers for a streamer."""
+    streamer: str
+    total: int
+    buyers: list[BuyerInfo]
+
+
+async def add_buyer_intent(streamer: str, username: str, message: str, cantidad: int, 
+                           timestamp: str, product_name: str = None, product_price: float = None,
+                           product_id: str = None):
+    """Add a user with buying intent to Supabase for persistent tracking."""
+    if not db_initialized:
+        logger.warning("Supabase not available, skipping buyer intent tracking")
+        return
+    
+    try:
+        supabase = get_supabase_client()
+        buyer_data = {
+            "streamer": streamer,
+            "username": username,
+            "message": message,
+            "cantidad": cantidad,
+            "timestamp": timestamp,
+            "product_name": product_name,
+            "product_price": product_price,
+            "product_id": product_id,
+            "status": "pending",
+            "created_at": datetime.utcnow().isoformat()
+        }
+        supabase.table("buyer_intents").insert(buyer_data).execute()
+        logger.info(f"Added buyer intent: {username} for streamer {streamer}")
+    except Exception as e:
+        logger.error(f"Failed to add buyer intent to Supabase: {e}")
+
+
+@app.get("/buyers/{streamer}", response_model=BuyersListResponse)
+async def get_buyers(streamer: str, limit: int = 50, status: str = None):
+    """
+    Get list of users with buying intent for a streamer.
+    
+    Args:
+        streamer: Streamer username
+        limit: Maximum number of buyers to return (default 50)
+        status: Filter by status (pending, contacted, sold, cancelled)
+    
+    Returns:
+        List of buyers with their messages and intent details
+    """
+    if not db_initialized:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    try:
+        supabase = get_supabase_client()
+        query = supabase.table("buyer_intents") \
+            .select("*") \
+            .eq("streamer", streamer) \
+            .order("created_at", desc=True) \
+            .limit(limit)
+        
+        if status:
+            query = query.eq("status", status)
+        
+        response = query.execute()
+        
+        buyers = []
+        if response.data:
+            for data in response.data:
+                buyers.append(BuyerInfo(
+                    id=data.get("id"),
+                    username=data.get("username", "unknown"),
+                    message=data.get("message", ""),
+                    cantidad=data.get("cantidad", 1),
+                    timestamp=data.get("timestamp", ""),
+                    product_name=data.get("product_name"),
+                    product_price=data.get("product_price"),
+                    product_id=data.get("product_id"),
+                    status=data.get("status", "pending")
+                ))
+        
+        return BuyersListResponse(
+            streamer=streamer,
+            total=len(buyers),
+            buyers=buyers
+        )
+    except Exception as e:
+        logger.error(f"Failed to get buyers from Supabase: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/buyers/{buyer_id}/status")
+async def update_buyer_status(buyer_id: int, status: str):
+    """
+    Update the status of a buyer intent.
+    
+    Args:
+        buyer_id: ID of the buyer intent record
+        status: New status (pending, contacted, sold, cancelled)
+    """
+    if not db_initialized:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    valid_statuses = ["pending", "contacted", "sold", "cancelled"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table("buyer_intents") \
+            .update({"status": status}) \
+            .eq("id", buyer_id) \
+            .execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Buyer intent not found")
+        
+        return {"ok": True, "id": buyer_id, "status": status}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update buyer status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint."""
@@ -269,6 +405,18 @@ async def process_chat(payload: ChatMessage):
                                     payment_ready = True
                                     response_text = f"¡Encontré el producto! {product.get('name')} - ${product.get('price')}. ¿Deseas proceder con la compra de {cantidad} unidad(es)?"
                                     logger.info(f"Product matched and ready for payment: {matched_product}")
+                                    
+                                    # Track buyer intent in Supabase
+                                    await add_buyer_intent(
+                                        streamer=payload.streamer_id,
+                                        username=payload.user_id,
+                                        message=payload.message,
+                                        cantidad=cantidad,
+                                        timestamp=timestamp,
+                                        product_name=product.get("name"),
+                                        product_price=product.get("price"),
+                                        product_id=str(product.get("id"))
+                                    )
                         else:
                             logger.warning(f"Vision service returned status {vision_response.status_code}")
                 
@@ -597,6 +745,18 @@ async def process_user_queue(payload: ProcessQueueRequest):
                                     }
                                     payment_ready = True
                                     response_text = f"¡Encontré el producto! {product.get('name')} - ${product.get('price')}. ¿Deseas comprar {cantidad} unidad(es)?"
+                                    
+                                    # Track buyer intent in Supabase
+                                    await add_buyer_intent(
+                                        streamer=payload.streamer_id,
+                                        username=payload.user_id,
+                                        message=all_messages,
+                                        cantidad=cantidad,
+                                        timestamp=first_timestamp,
+                                        product_name=product.get("name"),
+                                        product_price=product.get("price"),
+                                        product_id=str(product.get("id"))
+                                    )
                 
                 if not matched_product:
                     response_text = "Detecté intención de compra pero no pude identificar el producto. ¿Podrías ser más específico?"

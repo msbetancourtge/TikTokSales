@@ -184,4 +184,25 @@ INSERT INTO nlp_intents (intent_name, description) VALUES
 ('complaint', 'User complains about product or service')
 ON CONFLICT (intent_name) DO NOTHING;
 
+-- ============================================
+-- BUYER INTENTS TABLE (Users with buying intent)
+-- ============================================
+CREATE TABLE IF NOT EXISTS buyer_intents (
+    id SERIAL PRIMARY KEY,
+    streamer TEXT NOT NULL,
+    username TEXT NOT NULL,
+    message TEXT,
+    cantidad INTEGER DEFAULT 1,
+    timestamp TEXT,
+    product_name TEXT,
+    product_price DECIMAL(10, 2),
+    product_id TEXT,
+    status TEXT DEFAULT 'pending',  -- 'pending', 'contacted', 'sold', 'cancelled'
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_buyer_intents_streamer ON buyer_intents(streamer);
+CREATE INDEX IF NOT EXISTS idx_buyer_intents_status ON buyer_intents(status);
+CREATE INDEX IF NOT EXISTS idx_buyer_intents_created ON buyer_intents(created_at DESC);
+
 
