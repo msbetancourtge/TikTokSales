@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env.local
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.vscode
+.idea
+*.log
+.DS_Store
+node_modules
+npm-debug.log

@@ -1,0 +1,161 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres_local:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: mvp
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+      GENERIC_TIMEZONE: America/Bogota
+
+      EXECUTIONS_MODE: regular
+      DB_TYPE: postgres
+      DB_POSTGRESDB_HOST: postgres_local
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: mvp
+      DB_POSTGRESDB_USER: postgres
+      DB_POSTGRESDB_PASSWORD: postgres
+
+      QUEUE_BULL_REDIS_HOST: redis
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres_local:
+        condition: service_healthy
+
+  ###########################################################
+  #  MICROSERVICIOS JAVA (SPRING BOOT)
+  ###########################################################
+
+  chat-product:
+    build:
+      context: ../services/chat-product
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      REDIS_URL: redis://redis:6379
+      NLP_SERVICE_URL: http://nlp-service:8001
+      VISION_SERVICE_URL: http://vision-service:8002
+      # JDBC datasource configuration for Spring Boot
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_local:5432/${POSTGRES_DB:-mvp}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+      - nlp-service
+      - vision-service
+
+  ecommerce:
+    build:
+      context: ../services/ecommerce
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      WHATSAPP_PHONE_NUMBER: ${WHATSAPP_PHONE_NUMBER}
+      # JDBC datasource configuration for Spring Boot
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_local:5432/${POSTGRES_DB:-mvp}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres_local
+
+  ###########################################################
+  #  MICROSERVICIOS PYTHON (FASTAPI)
+  ###########################################################
+
+  nlp-service:
+    build:
+      context: ../services/nlp-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NLP_MODEL_PATH: /models/nlp
+    volumes:
+      - ../services/nlp-service/models:/models/nlp
+    ports:
+      - "8001:8001"
+
+  vision-service:
+    build:
+      context: ../services/vision-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VISION_MODEL_PATH: /models/vision
+    volumes:
+      - ../services/vision-service/models:/models/vision
+    ports:
+      - "8002:8002"
+
+volumes:
+  redis-data:
+  n8n-data:
+  pg-data:
+  minio-data:
