@@ -1,18 +1,21 @@
-# build stage
-FROM maven:3.9.5-eclipse-temurin-17 AS build
-WORKDIR /workspace
-COPY pom.xml ./
-RUN mvn -B -f pom.xml dependency:go-offline
+FROM python:3.11-slim
 
-COPY src src
-RUN mvn -B -DskipTests package
-
-# run stage
-FROM eclipse-temurin:17-jdk
-RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
-COPY --from=build /workspace/target/*.jar app.jar
-RUN chown -R appuser:appuser /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY app.py .
+COPY db.py .
+COPY __init__.py .
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 USER appuser
+
 EXPOSE 8082
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+
+# Run application
+CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8082"]

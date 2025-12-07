@@ -14,22 +14,8 @@ services:
       timeout: 3s
       retries: 5
 
-  postgres_local:
-    image: postgres:15
-    restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_DB: mvp
-    ports:
-      - "5432:5432"
-    volumes:
-      - pg-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # Using Supabase-managed Postgres; local Postgres has been removed.
+  # Configure Supabase DB connection via environment variables below.
 
   minio:
     image: minio/minio:latest
@@ -62,11 +48,12 @@ services:
 
       EXECUTIONS_MODE: regular
       DB_TYPE: postgres
-      DB_POSTGRESDB_HOST: postgres_local
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: mvp
-      DB_POSTGRESDB_USER: postgres
-      DB_POSTGRESDB_PASSWORD: postgres
+      # Use external Supabase Postgres db settings
+      DB_POSTGRESDB_HOST: ${SUPABASE_DB_HOST}
+      DB_POSTGRESDB_PORT: ${SUPABASE_DB_PORT:-5432}
+      DB_POSTGRESDB_DATABASE: ${SUPABASE_DB_DATABASE}
+      DB_POSTGRESDB_USER: ${SUPABASE_DB_USER}
+      DB_POSTGRESDB_PASSWORD: ${SUPABASE_DB_PASSWORD}
 
       QUEUE_BULL_REDIS_HOST: redis
     volumes:
@@ -74,11 +61,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      postgres_local:
-        condition: service_healthy
 
   ###########################################################
-  #  MICROSERVICIOS JAVA (SPRING BOOT)
+  #  MICROSERVICIOS PYTHON (FASTAPI)
   ###########################################################
 
   chat-product:
@@ -92,11 +77,6 @@ services:
       REDIS_URL: redis://redis:6379
       NLP_SERVICE_URL: http://nlp-service:8001
       VISION_SERVICE_URL: http://vision-service:8002
-      # JDBC datasource configuration for Spring Boot
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_local:5432/${POSTGRES_DB:-mvp}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
     ports:
       - "8081:8081"
     depends_on:
@@ -116,19 +96,10 @@ services:
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
       WHATSAPP_PHONE_NUMBER: ${WHATSAPP_PHONE_NUMBER}
-      # JDBC datasource configuration for Spring Boot
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_local:5432/${POSTGRES_DB:-mvp}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
     ports:
       - "8082:8082"
     depends_on:
-      - postgres_local
-
-  ###########################################################
-  #  MICROSERVICIOS PYTHON (FASTAPI)
-  ###########################################################
+      - redis
 
   nlp-service:
     build:
@@ -154,8 +125,20 @@ services:
     ports:
       - "8002:8002"
 
+  worker:
+    build: ./services/worker
+    environment:
+      REDIS_URL: redis://redis:6379
+      NLP_SERVICE_URL: http://nlp-service:8001
+      VISION_SERVICE_URL: http://vision-service:8002
+      ECOMMERCE_URL: http://ecommerce:8082
+    depends_on:
+      - redis
+      - nlp-service
+      - vision-service
+      - ecommerce
+
 volumes:
   redis-data:
   n8n-data:
-  pg-data:
   minio-data:
