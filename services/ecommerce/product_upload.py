@@ -33,6 +33,8 @@ MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "False").lower() == "true"
 
 # Vision Service Configuration
 VISION_SERVICE_URL = os.getenv("VISION_SERVICE_URL", "http://vision-service:8002")
+# CNN Model webhook for product image analysis
+CNN_WEBHOOK_URL = os.getenv("CNN_WEBHOOK_URL", "http://72.61.76.44:5678/webhook-test/933dc599-d304-45a0-b9c3-2dbb5dd39c5c")
 
 # Initialize MinIO client
 try:
@@ -135,10 +137,10 @@ async def get_model_description_from_vision(
     product_name: str
 ) -> dict:
     """
-    Call Vision service to analyze product images.
+    Call CNN webhook to analyze product images.
     
     Args:
-        image_urls: List of image URLs
+        image_urls: List of MinIO image URLs
         streamer: Streamer username
         product_name: Product name for context
     
@@ -146,29 +148,39 @@ async def get_model_description_from_vision(
         Dict with tag and model_description from CNN analysis
     """
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Send MinIO URLs to CNN webhook
             payload = {
                 "streamer": streamer,
                 "product_name": product_name,
-                "frame_urls": image_urls,
+                "image_urls": image_urls,
             }
+            
+            logger.info(f"Sending {len(image_urls)} image(s) to CNN webhook for analysis")
 
-            response = await client.post(f"{VISION_SERVICE_URL}/analyze_product", json=payload)
+            response = await client.post(CNN_WEBHOOK_URL, json=payload)
 
             if response.status_code != 200:
-                logger.warning(f"Vision service returned {response.status_code}")
+                logger.warning(f"CNN webhook returned {response.status_code}: {response.text}")
                 return {"tag": None, "model_description": "", "category": None}
 
             data = response.json()
+            logger.info(f"CNN webhook response: {data}")
+            
+            # Parse response - expecting {"tag": "...", "model_description": "..."}
+            # Handle both direct response and array response formats
+            if isinstance(data, list) and len(data) > 0:
+                data = data[0]
+            
             tag = data.get("tag")
             model_description = data.get("model_description", "")
-            category = data.get("category")  # backwards compatibility
+            category = data.get("category", tag)  # fallback category to tag
 
-            logger.info(f"Got analysis from Vision: tag={tag}, description_length={len(model_description)}")
+            logger.info(f"Got analysis from CNN: tag={tag}, description_length={len(model_description) if model_description else 0}")
             return {"tag": tag, "model_description": model_description, "category": category}
 
     except Exception as e:
-        logger.warning(f"Failed to get analysis from Vision: {e}")
+        logger.warning(f"Failed to get analysis from CNN webhook: {e}")
         return {"tag": None, "model_description": "", "category": None}
 
 
