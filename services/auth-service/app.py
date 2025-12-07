@@ -76,7 +76,7 @@ def register_client(payload: ClientRegister):
     if resp.data and len(resp.data) > 0:
         raise HTTPException(status_code=400, detail="Client already exists")
 
-    pw_hash = bcrypt.hash(payload.password)
+    pw_hash = bcrypt.hash(payload.password[:72])
     record = {
         "email": payload.email,
         "name": payload.name,
@@ -106,8 +106,8 @@ def register_streamer(payload: StreamerRegister):
         "created_at": datetime.utcnow().isoformat(),
     }
     insert = supabase.table("streamers").insert(record).execute()
-    if insert.status_code != 201:
-        raise HTTPException(status_code=500, detail=f"Supabase insert failed: {insert.data}")
+    if insert.error:
+        raise HTTPException(status_code=500, detail=f"Supabase insert failed: {insert.error}")
     return {"streamer": insert.data[0]}
 
 
