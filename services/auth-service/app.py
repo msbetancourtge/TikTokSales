@@ -76,7 +76,8 @@ def register_client(payload: ClientRegister):
     if resp.data and len(resp.data) > 0:
         raise HTTPException(status_code=400, detail="Client already exists")
 
-    pw_hash = bcrypt.hash(payload.password[:72])
+    pw_bytes = payload.password.encode('utf-8')[:72]
+    pw_hash = bcrypt.hash(pw_bytes.decode('utf-8', 'ignore'))
     record = {
         "email": payload.email,
         "name": payload.name,
