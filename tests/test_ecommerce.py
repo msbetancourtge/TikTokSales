@@ -133,7 +133,7 @@ class TestProductRetrieval:
         """Test getting non-existent product returns 404."""
         async with httpx.AsyncClient(timeout=HEALTH_TIMEOUT) as client:
             response = await client.get(
-                f"{ECOMMERCE_URL}/products/{TEST_STREAMER}/NONEXISTENT-SKU"
+                f"{ECOMMERCE_URL}/products/item/{TEST_STREAMER}/NONEXISTENT-SKU"
             )
             assert response.status_code == 404
             print("✓ Get product returns 404 for non-existent SKU")

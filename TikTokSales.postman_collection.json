@@ -539,7 +539,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}:{{ecommerce_port}}/products/cool_streamer/SHIRT-001",
+              "raw": "{{base_url}}:{{ecommerce_port}}/products/item/cool_streamer/SHIRT-001",
               "host": ["{{base_url}}"],
               "port": "{{ecommerce_port}}",
               "path": ["products", "cool_streamer", "SHIRT-001"]

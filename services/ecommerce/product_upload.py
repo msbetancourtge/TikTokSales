@@ -36,7 +36,7 @@ MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "http://72.61.76.44:9000")
 # Vision Service Configuration
 VISION_SERVICE_URL = os.getenv("VISION_SERVICE_URL", "http://vision-service:8002")
 # CNN Model webhook for product image analysis
-CNN_WEBHOOK_URL = os.getenv("CNN_WEBHOOK_URL", "http://72.61.76.44:5678/webhook-test/933dc599-d304-45a0-b9c3-2dbb5dd39c5c")
+CNN_WEBHOOK_URL = os.getenv("CNN_WEBHOOK_URL", "http://72.61.76.44:5678/webhook/933dc599-d304-45a0-b9c3-2dbb5dd39c5c")
 
 # Initialize MinIO client
 try:

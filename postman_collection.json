@@ -82,7 +82,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://72.61.76.44:8082/products/test_streamer/prod-sku-001",
+              "raw": "http://72.61.76.44:8082/products/item/test_streamer/prod-sku-001",
               "protocol": "http",
               "host": ["72.61.76.44"],
               "port": "8082",
@@ -384,7 +384,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "http://72.61.76.44:8082/products/e2e_test_streamer/e2e-premium-shoes-001",
+                  "raw": "http://72.61.76.44:8082/products/item/e2e_test_streamer/e2e-premium-shoes-001",
                   "protocol": "http",
                   "host": ["72.61.76.44"],
                   "port": "8082",

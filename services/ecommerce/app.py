@@ -242,7 +242,7 @@ async def upload_product(
         raise HTTPException(status_code=500, detail=f"Product upload failed: {e}")
 
 
-@app.get("/products/{streamer}/{sku}", response_model=ProductDetailsResponse)
+@app.get("/products/item/{streamer}/{sku}", response_model=ProductDetailsResponse)
 async def get_product(streamer: str, sku: str):
     """
     Get product details by streamer and SKU.
