@@ -472,6 +472,87 @@
               "path": ["process_queue"]
             }
           }
+        },
+        {
+          "name": "Get Buyers with Intent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/buyers/cool_streamer?limit=50",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["buyers", "cool_streamer"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Get list of users with buying intent for a streamer. Persisted in Supabase."
+          }
+        },
+        {
+          "name": "Get Buyers (Pending Only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/buyers/cool_streamer?status=pending",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["buyers", "cool_streamer"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                }
+              ]
+            },
+            "description": "Get only pending buyers (not yet contacted)."
+          }
+        },
+        {
+          "name": "Update Buyer Status",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/buyers/1/status?status=contacted",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["buyers", "1", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "contacted",
+                  "description": "Options: pending, contacted, sold, cancelled"
+                }
+              ]
+            },
+            "description": "Update buyer intent status. Replace '1' with actual buyer ID."
+          }
+        },
+        {
+          "name": "Mark Buyer as Sold",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:{{chat_port}}/buyers/1/status?status=sold",
+              "host": ["{{base_url}}"],
+              "port": "{{chat_port}}",
+              "path": ["buyers", "1", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "sold"
+                }
+              ]
+            },
+            "description": "Mark a buyer as sold after completing the purchase."
+          }
         }
       ]
     },

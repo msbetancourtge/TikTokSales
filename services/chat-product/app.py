@@ -519,6 +519,7 @@ async def _queue_comment_internal(payload: IncomingComment) -> dict:
         try:
             supabase = get_supabase_client()
             supabase.table("chat_messages").insert({
+                "user_id": payload.client,  # client is the user/commenter
                 "streamer": payload.streamer,
                 "client": payload.client,
                 "timestamp": payload.timestamp,
