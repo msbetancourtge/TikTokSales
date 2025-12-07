@@ -34,12 +34,12 @@ def get_supabase_client() -> Optional[Client]:
             logger.error(f"Failed to create Supabase client: {e}")
     return supabase_client
 
-# Add CORS middleware with restricted origins
+# Add CORS middleware - open for MVP
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080"],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

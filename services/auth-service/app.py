@@ -4,6 +4,7 @@ import logging
 import uuid
 
 from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 import bcrypt
 import jwt
@@ -12,6 +13,15 @@ from db import get_supabase_client
 
 logger = logging.getLogger("auth-service")
 app = FastAPI(title="TikTokSales Auth Service")
+
+# CORS configuration - open for MVP
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SUPABASE_SERVICE_KEY")
 JWT_ALGORITHM = "HS256"
