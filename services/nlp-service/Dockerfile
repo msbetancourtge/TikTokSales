@@ -6,7 +6,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 COPY . /app
 
-RUN pip install --no-cache-dir fastapi uvicorn[standard] transformers sentence-transformers httpx
+RUN pip install --no-cache-dir fastapi uvicorn[standard] httpx
 RUN chown -R appuser:appuser /app
 
 USER appuser
