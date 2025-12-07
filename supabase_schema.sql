@@ -1,4 +1,10 @@
+-- TikTokSales Database Schema for Supabase
+-- Generated from schema.py with all 9 migrations
+-- Run these SQL statements in the Supabase SQL editor
 
+-- =============================================================================
+-- Migration 001: Chat Messages
+-- =============================================================================
 -- Table: chat_messages
 -- Purpose: Store all incoming chat messages from live streams
 -- Indexes: (streamer, timestamp), (client)
@@ -27,9 +33,9 @@ ON chat_messages(nlp_intent) WHERE nlp_intent IS NOT NULL;
 COMMENT ON TABLE chat_messages IS 'All incoming messages from TikTok/stream sources';
 COMMENT ON COLUMN chat_messages.nlp_intent IS 'Intent predicted by NLP service (buy, question, none, etc)';
 COMMENT ON COLUMN chat_messages.nlp_score IS 'Confidence score of NLP prediction (0-1)';
-
-
-
+-- =============================================================================
+-- Migration 002: Products
+-- =============================================================================
 -- Table: products
 -- Purpose: Product catalog for matching with Vision service
 -- Indexes: (sku), (streamer), (category)
@@ -70,8 +76,9 @@ COMMENT ON COLUMN products.model_description IS 'Auto-generated description from
 COMMENT ON COLUMN products.image_urls IS 'JSON array of product images: [{url, filename, size, uploaded_at}]';
 COMMENT ON COLUMN products.minio_bucket IS 'MinIO bucket where images are stored';
 
-
-
+-- =============================================================================
+-- Migration 003: Product Matches (Vision)
+-- =============================================================================
 -- Table: product_matches
 -- Purpose: History of Vision service matches (streamer + timestamp -> product)
 -- Purpose: Used to track what products appeared in which streams
@@ -96,9 +103,9 @@ ON product_matches(product_id);
 COMMENT ON TABLE product_matches IS 'Vision service match history: what products appeared in which stream at what time';
 COMMENT ON COLUMN product_matches.vision_score IS 'Confidence score from Vision CNN model (0-1)';
 
-
-
--- Table: orders
+-- =============================================================================
+-- Migration 004: Orders
+-- =============================================================================
 -- Purpose: Customer orders created from live stream purchases
 -- Indexes: (buyer, created_at), (streamer, created_at), (status)
 
@@ -138,8 +145,9 @@ COMMENT ON COLUMN orders.source IS 'Platform source: tiktok_live, instagram_live
 COMMENT ON COLUMN orders.status IS 'Order lifecycle: pending -> paid -> shipped -> delivered';
 COMMENT ON COLUMN orders.payment_id IS 'External payment processor ID (Stripe transaction, etc)';
 
-
-
+-- =============================================================================
+-- Migration 005: Chat-Order Mapping
+-- =============================================================================
 -- Table: chat_message_order_mapping
 -- Purpose: Link chat messages to orders for analytics and tracing
 -- Purpose: Track which message triggered which order
@@ -160,8 +168,9 @@ ON chat_message_order_mapping(order_id);
 
 COMMENT ON TABLE chat_message_order_mapping IS 'Links chat messages to resulting orders for tracing and analytics';
 
-
-
+-- =============================================================================
+-- Migration 006: Payment Notifications
+-- =============================================================================
 -- Table: payment_notifications
 -- Purpose: Track all payment notification attempts (WhatsApp, SMS)
 -- Purpose: Audit trail for compliance
@@ -190,8 +199,9 @@ ON payment_notifications(created_at DESC);
 
 COMMENT ON TABLE payment_notifications IS 'Audit trail for payment notifications sent to customers';
 
-
-
+-- =============================================================================
+-- Migration 007: Streamers
+-- =============================================================================
 -- Table: streamers
 -- Purpose: Store streamer profiles and configuration
 -- Indexes: (username)
@@ -217,8 +227,9 @@ ON streamers(platform);
 
 COMMENT ON TABLE streamers IS 'Influencer/streamer profiles for commission tracking';
 
-
-
+-- =============================================================================
+-- Migration 008: NLP Intents
+-- =============================================================================
 -- Table: nlp_intents
 -- Purpose: Master list of intent types for NLP model
 -- Purpose: Analytics on user intent distribution
@@ -239,5 +250,78 @@ INSERT INTO nlp_intents (intent_name, description) VALUES
 ON CONFLICT DO NOTHING;
 
 COMMENT ON TABLE nlp_intents IS 'Master list of intent types for NLP classification';
+
+-- =============================================================================
+-- Migration 009: Streamer Frames
+-- =============================================================================
+-- Table: streamer_frames
+-- Purpose: Periodically-captured frames from streamers stored in MinIO
+-- Indexes: (streamer, frame_timestamp)
+
+CREATE TABLE IF NOT EXISTS streamer_frames (
+    id BIGSERIAL PRIMARY KEY,
+    streamer VARCHAR(255) NOT NULL,
+    frame_timestamp TIMESTAMPTZ NOT NULL,
+    minio_url TEXT NOT NULL,
+    minio_object VARCHAR(1024) NOT NULL,
+    content_type VARCHAR(128),
+    width INT,
+    height INT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_streamer_frames_streamer_timestamp
+ON streamer_frames(streamer, frame_timestamp DESC);
+
+COMMENT ON TABLE streamer_frames IS 'Individual frames captured from streamers video feeds and stored in MinIO';
+COMMENT ON COLUMN streamer_frames.minio_url IS 'S3/MinIO URL stored as minio://bucket/object or http(s) presigned URL';
+
+-- =============================================================================
+-- End of migrations
+-- =============================================================================
+
+
+-- =============================================================================
+-- Migration 010: Clients
+-- =============================================================================
+-- Table: clients
+-- Purpose: Registered customers who can purchase across multiple streamers
+
+CREATE TABLE IF NOT EXISTS clients (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    password_hash TEXT NOT NULL,
+    phone VARCHAR(20),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+
+COMMENT ON TABLE clients IS 'Registered customers (buyers) for the TikTokSales platform';
+
+-- =============================================================================
+-- Migration 011: Orders - add buyer_id
+-- =============================================================================
+-- Purpose: Add optional buyer_id FK to orders to link to `clients` table
+
+ALTER TABLE IF EXISTS orders
+ADD COLUMN IF NOT EXISTS buyer_id BIGINT;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'clients') THEN
+        BEGIN
+            ALTER TABLE orders ADD CONSTRAINT fk_orders_buyer_id FOREIGN KEY (buyer_id) REFERENCES clients(id);
+        EXCEPTION WHEN duplicate_object THEN
+            NULL;
+        END;
+    END IF;
+END$$;
+
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_id ON orders(buyer_id);
+
+COMMENT ON COLUMN orders.buyer_id IS 'Optional FK to clients.id for registered customers';
 
 

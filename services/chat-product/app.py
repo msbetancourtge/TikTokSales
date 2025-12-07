@@ -38,6 +38,7 @@ app.add_middleware(
 NLP_SERVICE_URL = os.getenv("NLP_SERVICE_URL", "http://nlp-service:8001")
 VISION_SERVICE_URL = os.getenv("VISION_SERVICE_URL", "http://vision-service:8002")
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://72.61.76.44:5678/webhook-test/37b254d7-d925-4e3a-a725-edbbe4f225b8")
 redis_client: aioredis.Redis | None = None
 
 # Initialize Supabase on startup
@@ -137,19 +138,31 @@ async def process_chat(payload: ChatMessage):
         ChatResponse with intent prediction and recommendations
     """
     try:
-        # For now, mock the NLP service call
-        # In production, this would call the actual nlp-service
-        user_message = payload.message.lower()
-        
-        # Simple keyword-based intent detection (same as nlp-service)
-        keywords = ["lo quiero", "comprar", "me interesa", "cómo lo pago", "quiero comprar", "quiero"]
+        # Call n8n webhook to classify intent
+        user_message = payload.message
+        intent = "none"
         intent_score = 0.0
-        for keyword in keywords:
-            if keyword in user_message:
-                intent_score = 0.95
-                break
         
-        intent = "buy" if intent_score > 0.5 else "none"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                webhook_response = await client.post(
+                    N8N_WEBHOOK_URL,
+                    json={"message": user_message},
+                    headers={"Content-Type": "application/json"}
+                )
+                if webhook_response.status_code == 200:
+                    result = webhook_response.json()
+                    # Expect response like: {"buy_intent": "yes"} or {"buy_intent": "no"}
+                    buy_intent = result.get("buy_intent", "").lower()
+                    intent = "buy" if buy_intent == "yes" else "none"
+                    intent_score = 0.95 if intent == "buy" else 0.0
+                    logger.info(f"Intent classification from n8n: {intent} (score={intent_score})")
+                else:
+                    logger.warning(f"n8n webhook returned status {webhook_response.status_code}")
+        except Exception as e:
+            logger.error(f"Failed to call n8n webhook for intent classification: {e}")
+            intent = "none"
+            intent_score = 0.0
         
         # Mock product recommendations
         recommended_products = []

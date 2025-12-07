@@ -274,6 +274,50 @@ COMMENT ON TABLE streamer_frames IS 'Individual frames captured from streamers v
 COMMENT ON COLUMN streamer_frames.minio_url IS 'S3/MinIO URL stored as minio://bucket/object or http(s) presigned URL';
 """
 
+MIGRATION_010_CLIENTS = """
+-- Table: clients
+-- Purpose: Registered customers who can purchase across multiple streamers
+
+CREATE TABLE IF NOT EXISTS clients (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    password_hash TEXT NOT NULL,
+    phone VARCHAR(20),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+
+COMMENT ON TABLE clients IS 'Registered customers (buyers) for the TikTokSales platform';
+"""
+
+
+MIGRATION_011_ORDERS_ADD_BUYER_ID = """
+-- Alter orders to add buyer_id to link to clients table
+
+ALTER TABLE IF EXISTS orders
+ADD COLUMN IF NOT EXISTS buyer_id BIGINT;
+
+-- Add foreign key if clients table exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'clients') THEN
+        BEGIN
+            ALTER TABLE orders ADD CONSTRAINT fk_orders_buyer_id FOREIGN KEY (buyer_id) REFERENCES clients(id);
+        EXCEPTION WHEN duplicate_object THEN
+            -- constraint already exists
+            NULL;
+        END;
+    END IF;
+END$$;
+
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_id ON orders(buyer_id);
+
+COMMENT ON COLUMN orders.buyer_id IS 'Optional FK to clients.id for registered customers';
+"""
+
 # Python ORM models (for reference in the Python services)
 
 ORM_MODELS = """
@@ -398,6 +442,12 @@ if __name__ == "__main__":
     print(MIGRATION_007_STREAMERS)
     print("\n# Migration 008: NLP Intents")
     print(MIGRATION_008_NLP_INTENTS)
+    print("\n# Migration 009: Streamer Frames")
+    print(MIGRATION_009_STREAMER_FRAMES)
+    print("\n# Migration 010: Clients")
+    print(MIGRATION_010_CLIENTS)
+    print("\n# Migration 011: Orders - add buyer_id")
+    print(MIGRATION_011_ORDERS_ADD_BUYER_ID)
     print("\n" + "=" * 70)
     print("ORM Models Reference:")
     print("=" * 70)

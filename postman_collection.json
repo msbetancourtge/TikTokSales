@@ -1,0 +1,639 @@
+{
+  "info": {
+    "name": "TikTokSales API Collection",
+    "description": "Complete API collection for TikTokSales microservices",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Ecommerce Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8082/health",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8082",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Upload Product",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "streamer",
+                  "value": "test_streamer",
+                  "type": "text"
+                },
+                {
+                  "key": "sku",
+                  "value": "prod-sku-001",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "Test Product",
+                  "type": "text"
+                },
+                {
+                  "key": "user_description",
+                  "value": "A great product for testing",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "29.99",
+                  "type": "text"
+                },
+                {
+                  "key": "stock",
+                  "value": "50",
+                  "type": "text"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8082/products/upload",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8082",
+              "path": ["products", "upload"]
+            }
+          }
+        },
+        {
+          "name": "Get Product Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8082/products/test_streamer/prod-sku-001",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8082",
+              "path": ["products", "test_streamer", "prod-sku-001"]
+            }
+          }
+        },
+        {
+          "name": "List Streamer Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8082/products/streamer/test_streamer",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8082",
+              "path": ["products", "streamer", "test_streamer"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vision Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8002/health",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8002",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Capture Frame",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8002/capture_frame?streamer=test_streamer",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8002",
+              "path": ["capture_frame"],
+              "query": [
+                {
+                  "key": "streamer",
+                  "value": "test_streamer"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Analyze Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer\": \"test_streamer\",\n  \"product_name\": \"Cool Shoes\",\n  \"frame_urls\": [\"minio://tiktoksales-frames/frames/test_streamer/frame.png\"]\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8002/analyze_product",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8002",
+              "path": ["analyze_product"]
+            }
+          }
+        },
+        {
+          "name": "Match Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"frame_urls\": [\"minio://tiktoksales-frames/frames/test_streamer/frame.png\"]\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8002/match_product",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8002",
+              "path": ["match_product"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "NLP Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8001/health",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8001",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Predict Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"I want to buy that amazing product!\"\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8001/predict_intent",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8001",
+              "path": ["predict_intent"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat Product Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8081/health",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8081",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "HTTP Comment Endpoint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"streamer\": \"test_streamer\",\n  \"client\": \"test_user\",\n  \"message\": \"I want to buy the shoes!\"\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8081/comment",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8081",
+              "path": ["comment"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "End-to-End Workflows",
+      "item": [
+        {
+          "name": "E2E: Capture Frame → Analyze → Upload Product",
+          "item": [
+            {
+              "name": "1. Capture Frame from Vision",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://72.61.76.44:8002/capture_frame?streamer=e2e_test_streamer",
+                  "protocol": "http",
+                  "host": ["72.61.76.44"],
+                  "port": "8002",
+                  "path": ["capture_frame"],
+                  "query": [
+                    {
+                      "key": "streamer",
+                      "value": "e2e_test_streamer"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "2. Analyze Product with Vision",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"streamer\": \"e2e_test_streamer\",\n  \"product_name\": \"Premium Shoes\",\n  \"frame_urls\": [\"minio://tiktoksales-frames/frames/e2e_test_streamer/frame.png\"]\n}"
+                },
+                "url": {
+                  "raw": "http://72.61.76.44:8002/analyze_product",
+                  "protocol": "http",
+                  "host": ["72.61.76.44"],
+                  "port": "8002",
+                  "path": ["analyze_product"]
+                }
+              }
+            },
+            {
+              "name": "3. Upload Product to Ecommerce",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "streamer",
+                      "value": "e2e_test_streamer",
+                      "type": "text"
+                    },
+                    {
+                      "key": "sku",
+                      "value": "e2e-premium-shoes-001",
+                      "type": "text"
+                    },
+                    {
+                      "key": "name",
+                      "value": "Premium Shoes",
+                      "type": "text"
+                    },
+                    {
+                      "key": "user_description",
+                      "value": "High quality premium shoes with comfort technology",
+                      "type": "text"
+                    },
+                    {
+                      "key": "price",
+                      "value": "199.99",
+                      "type": "text"
+                    },
+                    {
+                      "key": "stock",
+                      "value": "100",
+                      "type": "text"
+                    },
+                    {
+                      "key": "files",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "http://72.61.76.44:8082/products/upload",
+                  "protocol": "http",
+                  "host": ["72.61.76.44"],
+                  "port": "8082",
+                  "path": ["products", "upload"]
+                }
+              }
+            },
+            {
+              "name": "4. Verify Product Created",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://72.61.76.44:8082/products/e2e_test_streamer/e2e-premium-shoes-001",
+                  "protocol": "http",
+                  "host": ["72.61.76.44"],
+                  "port": "8082",
+                  "path": ["products", "e2e_test_streamer", "e2e-premium-shoes-001"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "E2E: Chat Message → NLP Intent → Order",
+          "item": [
+            {
+              "name": "1. Send Chat Message",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"streamer\": \"e2e_test_streamer\",\n  \"client\": \"buyer_user_123\",\n  \"message\": \"I want to buy the premium shoes!\"\n}"
+                },
+                "url": {
+                  "raw": "http://72.61.76.44:8081/comment",
+                  "protocol": "http",
+                  "host": ["72.61.76.44"],
+                  "port": "8081",
+                  "path": ["comment"]
+                }
+              }
+            },
+            {
+              "name": "2. Predict Intent from NLP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"text\": \"I want to buy the premium shoes!\"\n}"
+                },
+                "url": {
+                  "raw": "http://localhost:8001/predict_intent",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "8001",
+                  "path": ["predict_intent"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://72.61.76.44:8083/health",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8083",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Register Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"buyer_user@example.com\",\n  \"name\": \"Buyer User\",\n  \"password\": \"s3cretP@ss\",\n  \"phone\": \"+15551234567\"\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8083/clients/register",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8083",
+              "path": ["clients", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login (Client)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"buyer_user@example.com\",\n  \"password\": \"s3cretP@ss\"\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8083/login",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8083",
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "Register Streamer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"test_streamer\",\n  \"platform\": \"tiktok\",\n  \"follower_count\": 12345\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8083/streamers/register",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8083",
+              "path": ["streamers", "register"]
+            }
+          }
+        },
+        {
+          "name": "Create Purchase (protected)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": 1,\n  \"streamer\": \"test_streamer\",\n  \"quantity\": 1,\n  \"total_price\": 29.99,\n  \"payment_method\": \"stripe\"\n}"
+            },
+            "url": {
+              "raw": "http://72.61.76.44:8083/purchase",
+              "protocol": "http",
+              "host": ["72.61.76.44"],
+              "port": "8083",
+              "path": ["purchase"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Checks (All Services)",
+      "item": [
+        {
+          "name": "Ecommerce Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Vision Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8002/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8002",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "NLP Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8001/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Chat Product Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8081",
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost",
+      "type": "string"
+    },
+    {
+      "key": "ecommerce_port",
+      "value": "8082",
+      "type": "string"
+    },
+    {
+      "key": "vision_port",
+      "value": "8002",
+      "type": "string"
+    },
+    {
+      "key": "nlp_port",
+      "value": "8001",
+      "type": "string"
+    },
+    {
+      "key": "chat_port",
+      "value": "8081",
+      "type": "string"
+    }
+  ]
+}
