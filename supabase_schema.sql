@@ -16,7 +16,9 @@
 -- ============================================
 CREATE TABLE IF NOT EXISTS streamers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
     username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
     platform TEXT DEFAULT 'tiktok',
     follower_count INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()

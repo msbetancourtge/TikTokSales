@@ -35,6 +35,8 @@ class ClientRegister(BaseModel):
 
 
 class StreamerRegister(BaseModel):
+    email: EmailStr
+    password: str
     username: str
     platform: str | None = "tiktok"
     follower_count: int | None = 0
@@ -113,11 +115,23 @@ def register_client(payload: ClientRegister):
 @app.post("/streamers/register")
 def register_streamer(payload: StreamerRegister):
     supabase = get_supabase_client()
+    # Check if email already exists
+    resp = supabase.table("streamers").select("id,email").eq("email", payload.email).execute()
+    if resp.data and len(resp.data) > 0:
+        raise HTTPException(status_code=400, detail="Streamer with this email already exists")
+    # Check if username already exists
     resp = supabase.table("streamers").select("id,username").eq("username", payload.username).execute()
     if resp.data and len(resp.data) > 0:
-        raise HTTPException(status_code=400, detail="Streamer already exists")
+        raise HTTPException(status_code=400, detail="Streamer username already exists")
+    
+    # Hash password using bcrypt
+    pw_bytes = payload.password.encode('utf-8')[:72]
+    pw_hash = bcrypt.hashpw(pw_bytes, bcrypt.gensalt()).decode('utf-8')
+    
     record = {
+        "email": payload.email,
         "username": payload.username,
+        "password_hash": pw_hash,
         "platform": payload.platform,
         "follower_count": payload.follower_count or 0,
         "created_at": datetime.utcnow().isoformat(),
@@ -126,7 +140,13 @@ def register_streamer(payload: StreamerRegister):
         insert = supabase.table("streamers").insert(record).execute()
         if not insert.data or len(insert.data) == 0:
             raise HTTPException(status_code=500, detail="Insert returned no data")
-        return {"streamer": insert.data[0]}
+        created = insert.data[0]
+        token = create_token({"streamer_id": created.get("id"), "email": created.get("email"), "role": "streamer"})
+        return {
+            "streamer": {"id": created.get("id"), "email": created.get("email"), "username": created.get("username")},
+            "token": token,
+            "redirect": "/dashboard"
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -136,17 +156,42 @@ def register_streamer(payload: StreamerRegister):
 @app.post("/login")
 def login(payload: LoginRequest):
     supabase = get_supabase_client()
+    
+    # First check if it's a client
     resp = supabase.table("clients").select("id,email,password_hash,name").eq("email", payload.email).execute()
-    if not resp.data or len(resp.data) == 0:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    client = resp.data[0]
-    # Verify password using bcrypt directly
-    pw_bytes = payload.password.encode('utf-8')[:72]
-    stored_hash = client.get("password_hash", "").encode('utf-8')
-    if not bcrypt.checkpw(pw_bytes, stored_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_token({"client_id": client.get("id"), "email": client.get("email")})
-    return {"token": token, "client": {"id": client.get("id"), "email": client.get("email"), "name": client.get("name")}}
+    if resp.data and len(resp.data) > 0:
+        client = resp.data[0]
+        # Verify password using bcrypt directly
+        pw_bytes = payload.password.encode('utf-8')[:72]
+        stored_hash = client.get("password_hash", "").encode('utf-8')
+        if not bcrypt.checkpw(pw_bytes, stored_hash):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        token = create_token({"client_id": client.get("id"), "email": client.get("email"), "role": "client"})
+        return {
+            "token": token,
+            "user": {"id": client.get("id"), "email": client.get("email"), "name": client.get("name")},
+            "role": "client",
+            "redirect": "/products"
+        }
+    
+    # Check if it's a streamer
+    resp = supabase.table("streamers").select("id,email,password_hash,username").eq("email", payload.email).execute()
+    if resp.data and len(resp.data) > 0:
+        streamer = resp.data[0]
+        # Verify password using bcrypt directly
+        pw_bytes = payload.password.encode('utf-8')[:72]
+        stored_hash = streamer.get("password_hash", "").encode('utf-8')
+        if not bcrypt.checkpw(pw_bytes, stored_hash):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        token = create_token({"streamer_id": streamer.get("id"), "email": streamer.get("email"), "role": "streamer"})
+        return {
+            "token": token,
+            "user": {"id": streamer.get("id"), "email": streamer.get("email"), "username": streamer.get("username")},
+            "role": "streamer",
+            "redirect": "/dashboard"
+        }
+    
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 @app.post("/purchase")
