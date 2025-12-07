@@ -86,10 +86,15 @@ def register_client(payload: ClientRegister):
         "phone": payload.phone,
         "created_at": datetime.utcnow().isoformat(),
     }
-    insert = supabase.table("clients").insert(record).execute()
-    if insert.error:
-        raise HTTPException(status_code=500, detail=str(insert.error))
-    created = insert.data[0]
+    try:
+        insert = supabase.table("clients").insert(record).execute()
+        if not insert.data or len(insert.data) == 0:
+            raise HTTPException(status_code=500, detail="Insert returned no data")
+        created = insert.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supabase insert failed: {e}")
     # return token
     token = create_token({"client_id": created.get("id"), "email": created.get("email")})
     return {"client": {"id": created.get("id"), "email": created.get("email"), "name": created.get("name")}, "token": token}
@@ -107,10 +112,15 @@ def register_streamer(payload: StreamerRegister):
         "follower_count": payload.follower_count or 0,
         "created_at": datetime.utcnow().isoformat(),
     }
-    insert = supabase.table("streamers").insert(record).execute()
-    if insert.error:
-        raise HTTPException(status_code=500, detail=f"Supabase insert failed: {insert.error}")
-    return {"streamer": insert.data[0]}
+    try:
+        insert = supabase.table("streamers").insert(record).execute()
+        if not insert.data or len(insert.data) == 0:
+            raise HTTPException(status_code=500, detail="Insert returned no data")
+        return {"streamer": insert.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supabase insert failed: {e}")
 
 
 @app.post("/login")

@@ -156,7 +156,7 @@ async def process_chat(payload: ChatMessage):
                     result = webhook_response.json()
                     # Expect response: {"text": {"intencion_compra": "yes/no", "cantidad": int}}
                     text_block = result.get("text", {})
-                    intent = text_block.get("intencion_compra", "no").lower()
+                    intent = text_block.get("intencion_compra").lower()
                     cantidad = int(text_block.get("cantidad", 0))
                     logger.info(f"Intent classification from n8n: intent={intent}, cantidad={cantidad}")
                 else:
